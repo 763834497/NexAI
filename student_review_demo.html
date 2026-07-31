@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<!--
+  文件说明：学生端提交作业与 AI 评审流程静态演示页。
+  作用：模拟学生提交作业后，门槛项评审与证据获取 Agent、Skill/Tool 和单题评审 Agent 的执行过程。
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>学生端 AI 评审流程演示</title>
+  <link rel="stylesheet" href="demo.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">学</div>
+        <div>
+          <h1 class="brand-title">学生端提交作业与 AI 评审</h1>
+          <div class="brand-subtitle">模拟门槛项评审、证据获取、正式评分和结果生成</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="index.html">流程入口</a>
+        <a href="admin_metric_demo.html">管理端</a>
+        <a class="active" href="student_review_demo.html">学生端</a>
+        <a href="result_demo.html">结果页</a>
+      </nav>
+    </header>
+
+    <div class="workspace">
+      <section class="section">
+        <div class="section-head">
+          <h3>提交作业</h3>
+          <span class="pill">系统实现题</span>
+        </div>
+        <div class="section-body">
+          <div class="form-grid">
+            <div class="field">
+              <label>学生编号</label>
+              <input class="input" value="stu_001" />
+            </div>
+            <div class="field">
+              <label>题目编号</label>
+              <input class="input" value="q_web_001" />
+            </div>
+            <div class="field full">
+              <label>系统访问 URL</label>
+              <input class="input" value="https://demo.example.com/ai-web-app" />
+            </div>
+            <div class="field full">
+              <label>README 文档</label>
+              <input class="input" value="https://oss.example.com/readme.md" />
+            </div>
+            <div class="field full">
+              <label>项目代码压缩包</label>
+              <input class="input" value="https://oss.example.com/project.zip" />
+            </div>
+            <div class="field full">
+              <label>作业说明</label>
+              <textarea class="textarea">本作品实现了首页、任务列表、任务详情和结果展示页面，支持基础流程跳转，并在 README 中说明了运行方式和主要功能。</textarea>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button class="btn" data-action="submit-review" onclick="simulateStudentReview('pass')">提交作业并评审</button>
+            <button class="btn secondary" onclick="simulateStudentReview('fail')">演示门槛不通过</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="section ai-panel">
+        <div class="section-head">
+          <h3>智能评审诊断台</h3>
+          <span class="pill"><span data-progress-label>0%</span></span>
+        </div>
+        <div class="ai-body">
+          <div class="progress"><span data-progress></span></div>
+          <div class="agent-log">
+            <div class="log-item" data-log="read-config" data-pending="等待读取评审配置">
+              <div class="log-title"><span class="log-dot"></span>读取评审配置</div>
+              <div class="log-text">等待读取评审配置</div>
+            </div>
+            <div class="log-item" data-log="gate-agent" data-pending="等待门槛项评审">
+              <div class="log-title"><span class="log-dot"></span>门槛项评审与证据获取 Agent</div>
+              <div class="log-text">等待门槛项评审</div>
+            </div>
+            <div class="log-item" data-log="skill-web" data-pending="等待网页访问 Skill">
+              <div class="log-title"><span class="log-dot"></span>网页访问 Skill / Tool</div>
+              <div class="log-text">等待网页访问 Skill</div>
+            </div>
+            <div class="log-item" data-log="skill-doc" data-pending="等待读取 README">
+              <div class="log-title"><span class="log-dot"></span>文档读取 Skill / Tool</div>
+              <div class="log-text">等待读取 README</div>
+            </div>
+            <div class="log-item" data-log="skill-code" data-pending="等待读取代码压缩包">
+              <div class="log-title"><span class="log-dot"></span>代码/压缩包 Skill / Tool</div>
+              <div class="log-text">等待读取代码压缩包</div>
+            </div>
+            <div class="log-item" data-log="evidence-merge" data-pending="等待证据包汇总">
+              <div class="log-title"><span class="log-dot"></span>证据包汇总</div>
+              <div class="log-text">等待证据包汇总</div>
+            </div>
+            <div class="log-item" data-log="review-agent" data-pending="等待单题评审 Agent">
+              <div class="log-title"><span class="log-dot"></span>单题评审 Agent</div>
+              <div class="log-text">等待单题评审 Agent</div>
+            </div>
+            <div class="log-item" data-log="fail-result" data-pending="等待不合格结果生成">
+              <div class="log-title"><span class="log-dot"></span>门槛不通过结果</div>
+              <div class="log-text">等待不合格结果生成</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section" data-review-result hidden style="margin-top:18px;">
+      <div class="section-head">
+        <h3>单题评审结果</h3>
+        <span class="pill green">优秀 · 88分</span>
+      </div>
+      <div class="section-body split">
+        <div class="review-row">
+          <h4>评语</h4>
+          <p>本次作业完成了系统实现题的主要交付要求，系统地址可以访问，核心页面与主要流程能够验证，README 和代码材料也比较完整，整体达到优秀水平。</p>
+        </div>
+        <div class="review-row">
+          <h4>评价依据</h4>
+          <p>系统 URL 可访问；README 包含项目说明和运行方式；代码压缩包可解压，项目入口和主要目录结构清晰。</p>
+        </div>
+        <div class="review-row">
+          <h4>优点</h4>
+          <ul>
+            <li>核心流程完整，页面之间的跳转关系比较清楚。</li>
+            <li>提交材料完整，能够支撑评审过程进行验证。</li>
+          </ul>
+        </div>
+        <div class="review-row">
+          <h4>修改建议</h4>
+          <ul>
+            <li>建议补充异常状态和空数据状态说明，让系统表现更接近真实应用。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-gate-fail-result hidden style="margin-top:18px;">
+      <div class="section-head">
+        <h3>门槛项不通过结果</h3>
+        <span class="pill red">不合格</span>
+      </div>
+      <div class="section-body split">
+        <div class="review-row">
+          <h4>评语</h4>
+          <p>本次作业尚未满足题目的核心交付要求，当前缺少可访问的系统地址，系统无法验证核心页面和主要功能流程，因此不进入后续正式评分。</p>
+        </div>
+        <div class="review-row">
+          <h4>修改建议</h4>
+          <ul>
+            <li>补充可访问的系统 URL，并确认链接能够正常打开。</li>
+            <li>在 README 中说明系统入口、主要功能和操作路径。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="demo.js"></script>
+</body>
+</html>

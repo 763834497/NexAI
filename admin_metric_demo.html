@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<!--
+  文件说明：管理端题库生成评价指标静态演示页。
+  作用：参考项目管理端“习题库 + 生成评价指标”页面，演示从题库选择题目到生成、编辑、保存评价指标的流程。
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>题库生成评价指标演示</title>
+  <link rel="stylesheet" href="demo.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">题</div>
+        <div>
+          <h1 class="brand-title">习题库生成评价指标</h1>
+          <div class="brand-subtitle">参考项目管理端题库页面，静态模拟分步式生成评价指标</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="index.html">流程入口</a>
+        <a class="active" href="admin_metric_demo.html">管理端</a>
+        <a href="student_review_demo.html">学生端</a>
+        <a href="result_demo.html">结果页</a>
+      </nav>
+    </header>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>习题库</h3>
+          <div class="head-desc">管理员在题库列表中选择“生成评价指标”，进入选题和指标编辑流程。</div>
+        </div>
+        <button class="btn" onclick="createDemoQuestionBank()">+ 创建题库</button>
+      </div>
+      <div class="section-body">
+        <div class="demo-filter-bar">
+          <input class="input demo-search" placeholder="搜索题库名称..." value="" />
+          <select class="input demo-select" aria-label="分类筛选">
+            <option>全部分类</option>
+            <option>AI 基础</option>
+            <option>AI 技能</option>
+            <option>AI 开发</option>
+          </select>
+        </div>
+
+        <div class="demo-table-wrap">
+          <table class="demo-table">
+            <thead>
+              <tr>
+                <th>序号</th>
+                <th>题库名称</th>
+                <th>题目数量</th>
+                <th>分类</th>
+                <th>创建时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-bank="AI 基础概念题库">
+                <td>1</td>
+                <td><strong>AI 基础概念题库</strong></td>
+                <td>3</td>
+                <td>AI 基础</td>
+                <td>2026-06-10</td>
+                <td>
+                  <div class="demo-actions">
+                    <button class="mini-btn" onclick="editDemoQuestionBank(this)">编辑</button>
+                    <button class="mini-btn" onclick="viewDemoQuestionBank('AI 基础概念题库')">查看</button>
+                    <button class="mini-btn primary" onclick="openDemoScoringWizard('AI 基础概念题库')">生成评价指标</button>
+                    <button class="mini-btn danger" onclick="deleteDemoQuestionBank(this)">删除</button>
+                  </div>
+                </td>
+              </tr>
+              <tr data-bank="AI Coding 实战题库">
+                <td>2</td>
+                <td><strong>AI Coding 实战题库</strong></td>
+                <td>3</td>
+                <td>AI 开发</td>
+                <td>2026-06-15</td>
+                <td>
+                  <div class="demo-actions">
+                    <button class="mini-btn" onclick="editDemoQuestionBank(this)">编辑</button>
+                    <button class="mini-btn" onclick="viewDemoQuestionBank('AI Coding 实战题库')">查看</button>
+                    <button class="mini-btn primary" onclick="openDemoScoringWizard('AI Coding 实战题库')">生成评价指标</button>
+                    <button class="mini-btn danger" onclick="deleteDemoQuestionBank(this)">删除</button>
+                  </div>
+                </td>
+              </tr>
+              <tr data-bank="提示词工程练习题库">
+                <td>3</td>
+                <td><strong>提示词工程练习题库</strong></td>
+                <td>3</td>
+                <td>AI 技能</td>
+                <td>2026-06-18</td>
+                <td>
+                  <div class="demo-actions">
+                    <button class="mini-btn" onclick="editDemoQuestionBank(this)">编辑</button>
+                    <button class="mini-btn" onclick="viewDemoQuestionBank('提示词工程练习题库')">查看</button>
+                    <button class="mini-btn primary" onclick="openDemoScoringWizard('提示词工程练习题库')">生成评价指标</button>
+                    <button class="mini-btn danger" onclick="deleteDemoQuestionBank(this)">删除</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="scoring-overlay" id="demoScoringOverlay" onclick="if(event.target===this)closeDemoScoringWizard()">
+    <div class="scoring-modal">
+      <div class="scoring-header">
+        <div class="scoring-title-wrap">
+          <strong id="demoScoringTitle">生成评价指标</strong>
+          <div class="scoring-stepper">
+            <span class="scoring-step active" data-step-label="select">1 选择题目</span>
+            <span class="step-arrow">→</span>
+            <span class="scoring-step" data-step-label="edit">2 编辑指标</span>
+          </div>
+        </div>
+        <button class="scoring-close" onclick="closeDemoScoringWizard()">×</button>
+      </div>
+
+      <div class="scoring-body">
+        <div class="scoring-panel active" data-scoring-panel="select">
+          <div class="question-select-area">
+            <div class="question-left">
+              <div class="question-toolbar">
+                <div>
+                  <strong>题目列表 <span id="demoQuestionCount">(3)</span></strong>
+                  <p>选择需要生成评价指标的题目</p>
+                </div>
+                <button class="text-btn" onclick="toggleDemoSelectAll()">全选 / 取消</button>
+              </div>
+              <div class="question-list" id="demoQuestionList"></div>
+            </div>
+            <aside class="question-summary">
+              <div class="summary-card">
+                <div class="summary-label">已选择题目</div>
+                <div class="summary-count" id="demoSelectedCount">0</div>
+              </div>
+              <p>点击“生成评价指标”后，系统会模拟调用评审指标生成 Agent，并进入指标编辑页面。</p>
+              <button class="btn" id="demoGenerateBtn" onclick="generateDemoSelectedRubrics()" disabled>生成评价指标</button>
+            </aside>
+          </div>
+        </div>
+
+        <div class="scoring-panel" data-scoring-panel="edit">
+          <div class="scoring-edit-layout">
+            <section class="scoring-edit-main">
+              <div class="scoring-result-toolbar">
+                <div>
+                  <strong>评价指标编辑</strong>
+                  <p id="demoScoringDesc">生成完成后可直接修改每个题目的评价指标。</p>
+                </div>
+                <div class="scoring-toolbar-actions">
+                  <button class="btn secondary" onclick="backDemoScoringSelection()">上一步</button>
+                  <button class="btn secondary" onclick="regenerateDemoAllRubrics()">重新生成全部</button>
+                  <button class="btn" onclick="saveDemoAllRubrics()">全部保存</button>
+                </div>
+              </div>
+              <div class="criteria-list" id="demoCriteriaList"></div>
+            </section>
+
+            <aside class="section ai-panel scoring-ai-panel">
+              <div class="section-head">
+                <h3>AI 执行流程</h3>
+                <span class="pill"><span data-progress-label>0%</span></span>
+              </div>
+              <div class="ai-body">
+                <div class="progress"><span data-progress></span></div>
+                <div class="agent-log">
+                  <div class="log-item" data-log="rubric-agent" data-pending="等待调用评审指标生成 Agent">
+                    <div class="log-title"><span class="log-dot"></span>评审指标生成 Agent</div>
+                    <div class="log-text">等待调用评审指标生成 Agent</div>
+                  </div>
+                  <div class="log-item" data-log="rubric-schema" data-pending="等待生成结构化评价指标">
+                    <div class="log-title"><span class="log-dot"></span>评价指标结构化</div>
+                    <div class="log-text">等待生成结构化评价指标</div>
+                  </div>
+                  <div class="log-item" data-log="skill-agent" data-pending="等待调用评审 Skill 确定 Agent">
+                    <div class="log-title"><span class="log-dot"></span>评审 Skill 确定 Agent</div>
+                    <div class="log-text">等待调用评审 Skill 确定 Agent</div>
+                  </div>
+                  <div class="log-item" data-log="save-config" data-pending="等待模拟保存配置">
+                    <div class="log-title"><span class="log-dot"></span>保存配置</div>
+                    <div class="log-text">等待模拟保存配置</div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="demo.js"></script>
+</body>
+</html>

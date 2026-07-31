@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<!--
+  文件说明：AI 评审团优化流程交互演示页。
+  作用：以可点击流程图展示管理端生成指标、固定 Skill 计划、学生提交、门槛分支、Skill/Tool 取证、单题评审和课程评审的完整数据流。
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI评审团流程交互图</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #9aa8c7;
+      --agent: #5b5ce2;
+      --skill: #0ea5a4;
+      --tool: #e87a2f;
+      --service: #3b82f6;
+      --action: #64748b;
+      --fail: #ef4444;
+      --ok: #16a34a;
+      --panel: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, #eef2ff, transparent 34%), var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .page {
+      width: min(1740px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 22px 0 34px;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.75;
+      max-width: 980px;
+      font-size: 14px;
+    }
+
+    .nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav a {
+      color: #344054;
+      background: #fff;
+      border: 1px solid #d9e0ef;
+      border-radius: 999px;
+      padding: 9px 12px;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(1120px, 1fr) 440px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .canvas-wrap {
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid #d9e0ef;
+      border-radius: 24px;
+      box-shadow: 0 24px 70px rgba(23, 32, 51, 0.1);
+      overflow: auto;
+      padding: 18px;
+    }
+
+    .flow-canvas {
+      position: relative;
+      width: 1260px;
+      height: 2280px;
+      margin: 0 auto;
+      background:
+        linear-gradient(#eef2f8 1px, transparent 1px),
+        linear-gradient(90deg, #eef2f8 1px, transparent 1px);
+      background-size: 32px 32px;
+      border-radius: 22px;
+    }
+
+    .stage-zone {
+      position: absolute;
+      border: 1px dashed #d6deef;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.42);
+      pointer-events: none;
+    }
+
+    .stage-title {
+      position: absolute;
+      top: 12px;
+      left: 18px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #fff;
+      color: #667085;
+      font-size: 12px;
+      font-weight: 900;
+      border: 1px solid #d9e0ef;
+      z-index: 7;
+    }
+
+    .stage-admin { left: 18px; top: 36px; width: 1224px; height: 290px; }
+    .stage-config { left: 18px; top: 360px; width: 1224px; height: 250px; }
+    .stage-submit { left: 18px; top: 645px; width: 1224px; height: 250px; }
+    .stage-evidence { left: 18px; top: 930px; width: 1224px; height: 630px; }
+    .stage-result { left: 18px; top: 1595px; width: 1224px; height: 640px; }
+
+    .flow-line {
+      position: absolute;
+      inset: 0;
+      width: 1260px;
+      height: 2280px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .flow-line path,
+    .flow-line line,
+    .flow-line polyline {
+      fill: none;
+      stroke: var(--line);
+      stroke-width: 2.2;
+      marker-end: url(#arrowDefault);
+    }
+
+    .flow-line .ok-path {
+      stroke: var(--ok);
+      stroke-width: 2.8;
+      marker-end: url(#arrowOk);
+    }
+
+    .flow-line .fail-path {
+      stroke: var(--fail);
+      stroke-width: 2.8;
+      stroke-dasharray: 7 6;
+      marker-end: url(#arrowFail);
+    }
+
+    .flow-line .data-path {
+      stroke: #7c3aed;
+      stroke-width: 2.6;
+      stroke-dasharray: 4 5;
+      marker-end: url(#arrowData);
+    }
+
+    .flow-line .no-arrow {
+      marker-end: none;
+    }
+
+    .path-label {
+      position: absolute;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid #d9e0ef;
+      color: #475467;
+      font-size: 11px;
+      font-weight: 900;
+      pointer-events: none;
+      white-space: nowrap;
+      box-shadow: 0 8px 18px rgba(23, 32, 51, 0.08);
+      z-index: 6;
+    }
+
+    .flow-node {
+      position: absolute;
+      z-index: 3;
+      width: 200px;
+      min-height: 86px;
+      border: 2px solid #d7deef;
+      background: var(--panel);
+      border-radius: 16px;
+      padding: 12px 13px;
+      text-align: left;
+      cursor: pointer;
+      color: var(--ink);
+      box-shadow: 0 12px 26px rgba(23, 32, 51, 0.08);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .flow-node:hover,
+    .flow-node.active {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 38px rgba(23, 32, 51, 0.15);
+      border-color: #5b5ce2;
+    }
+
+    .flow-node.active {
+      outline: 4px solid rgba(91, 92, 226, 0.12);
+    }
+
+    .flow-node h3 {
+      margin: 7px 0 6px;
+      font-size: 15px;
+      line-height: 1.36;
+    }
+
+    .flow-node p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 900;
+      color: #fff;
+    }
+
+    .flow-node.action { border-color: #cbd5e1; }
+    .flow-node.action .tag { background: var(--action); }
+    .flow-node.agent { border-color: #c7d2fe; }
+    .flow-node.agent .tag { background: var(--agent); }
+    .flow-node.skill { border-color: #99f6e4; }
+    .flow-node.skill .tag { background: var(--skill); }
+    .flow-node.tool { width: 120px; min-height: 64px; border-color: #fed7aa; border-radius: 14px; padding: 9px 10px; }
+    .flow-node.tool .tag { background: var(--tool); }
+    .flow-node.service { border-color: #bfdbfe; }
+    .flow-node.service .tag { background: var(--service); }
+    .flow-node.fail { border-color: #fecaca; background: #fff7f7; }
+    .flow-node.fail .tag { background: var(--fail); }
+    .flow-node.result { border-color: #bbf7d0; background: #f7fff9; }
+    .flow-node.result .tag { background: var(--ok); }
+
+    .detail-panel {
+      position: sticky;
+      top: 18px;
+      max-height: calc(100vh - 36px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border: 1px solid #d9e0ef;
+      border-radius: 24px;
+      box-shadow: 0 24px 70px rgba(23, 32, 51, 0.12);
+    }
+
+    .detail-head {
+      padding: 18px;
+      border-bottom: 1px solid #e7ecf5;
+      background: linear-gradient(135deg, #ffffff, #f3f6ff);
+    }
+
+    .detail-type {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: #eef2ff;
+      color: #4f46e5;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .detail-head h2 {
+      margin: 10px 0 7px;
+      font-size: 22px;
+      line-height: 1.3;
+    }
+
+    .detail-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    .detail-body {
+      overflow: auto;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .info-block {
+      border: 1px solid #e5eaf4;
+      border-radius: 16px;
+      background: #fff;
+      padding: 13px;
+    }
+
+    .info-block h3 {
+      margin: 0 0 9px;
+      font-size: 14px;
+    }
+
+    .info-block p,
+    .info-block li {
+      color: #5f6f89;
+      font-size: 12px;
+      line-height: 1.72;
+    }
+
+    .info-block ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .json-box {
+      margin: 0;
+      border-radius: 14px;
+      background: #111827;
+      color: #dbeafe;
+      padding: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+      line-height: 1.62;
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    @media (max-width: 1200px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-panel {
+        position: static;
+        max-height: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <h1>Agent 评审团优化流程交互图</h1>
+        <p>点击任意模块查看该模块的真实输入、输出、数据传递方向和执行规则。虚线紫色表示证据数据流，绿色表示门槛通过路径，红色虚线表示门槛不合格直接输出结果路径。</p>
+      </div>
+      <nav class="nav">
+        <a href="index.html">入口</a>
+        <a href="admin_metric_demo.html">管理端演示</a>
+        <a href="student_review_demo.html">学生端演示</a>
+        <a href="result_demo.html">结果页</a>
+      </nav>
+    </header>
+
+    <section class="layout">
+      <div class="canvas-wrap">
+        <div class="flow-canvas">
+          <div class="stage-zone stage-admin"><span class="stage-title">一、管理端配置</span></div>
+          <div class="stage-zone stage-config"><span class="stage-title">二、评审流程配置</span></div>
+          <div class="stage-zone stage-submit"><span class="stage-title">三、学生提交与门槛判断</span></div>
+          <div class="stage-zone stage-evidence"><span class="stage-title">四、Skill / Tool 并行取证</span></div>
+          <div class="stage-zone stage-result"><span class="stage-title">五、结果生成</span></div>
+
+          <svg class="flow-line" viewBox="0 0 1260 2280" aria-hidden="true">
+            <defs>
+              <marker id="arrowDefault" viewBox="0 0 10 10" markerWidth="9" markerHeight="9" refX="8.2" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M1,1 L9,5 L1,9 Z" fill="#9aa8c7"></path>
+              </marker>
+              <marker id="arrowOk" viewBox="0 0 10 10" markerWidth="9" markerHeight="9" refX="8.2" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M1,1 L9,5 L1,9 Z" fill="#16a34a"></path>
+              </marker>
+              <marker id="arrowFail" viewBox="0 0 10 10" markerWidth="9" markerHeight="9" refX="8.2" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M1,1 L9,5 L1,9 Z" fill="#ef4444"></path>
+              </marker>
+              <marker id="arrowData" viewBox="0 0 10 10" markerWidth="9" markerHeight="9" refX="8.2" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M1,1 L9,5 L1,9 Z" fill="#7c3aed"></path>
+              </marker>
+            </defs>
+            <line x1="240" y1="163" x2="272" y2="163"></line>
+            <line x1="480" y1="163" x2="512" y2="163"></line>
+            <line x1="720" y1="163" x2="752" y2="163"></line>
+            <line x1="960" y1="163" x2="992" y2="163"></line>
+            <path d="M1100 206 V335 H480 V413"></path>
+            <line x1="580" y1="473" x2="672" y2="473"></line>
+            <path d="M780 516 V630 H480 V713"></path>
+            <line x1="580" y1="773" x2="672" y2="773"></line>
+            <path class="fail-path" d="M880 773 H952"></path>
+            <path class="ok-path no-arrow" d="M780 828 V940"></path>
+            <path class="ok-path no-arrow" d="M240 940 H1020"></path>
+            <path class="ok-path" d="M240 940 V1032"></path>
+            <path class="ok-path" d="M630 940 V1032"></path>
+            <path class="ok-path" d="M1020 940 V1032"></path>
+            <line x1="240" y1="1126" x2="240" y2="1182"></line>
+            <line x1="630" y1="1126" x2="630" y2="1182"></line>
+            <line x1="1020" y1="1126" x2="1020" y2="1182"></line>
+            <path class="data-path no-arrow" d="M340 1083 H400 V900"></path>
+            <path class="data-path no-arrow" d="M730 1083 H650 V900"></path>
+            <path class="data-path no-arrow" d="M920 1083 H860 V900"></path>
+            <path class="data-path no-arrow" d="M400 900 H860"></path>
+            <path class="data-path" d="M650 900 V850 H720 V840"></path>
+            <path d="M820 828 V1545 H630 V1643"></path>
+            <line x1="630" y1="1744" x2="630" y2="1807"></line>
+            <line x1="630" y1="1904" x2="630" y2="1967"></line>
+          </svg>
+
+          <span class="path-label" style="left: 474px; top: 332px;">全部保存后触发</span>
+          <span class="path-label" style="left: 692px; top: 924px; color: var(--ok);">门槛通过，分成 3 个 Skill 分支</span>
+          <span class="path-label" style="left: 884px; top: 736px; color: var(--fail);">门槛不合格</span>
+          <span class="path-label" style="left: 420px; top: 872px; color: #7c3aed;">3 个 Skill 结果合并后返回 Agent</span>
+
+          <button class="flow-node action active" style="left:40px; top:120px;" data-node="admin-select">
+            <span class="tag">用户操作</span>
+            <h3>管理员选择题目</h3>
+            <p>在题库选择需要生成评价指标的题目。</p>
+          </button>
+          <button class="flow-node action" style="left:280px; top:120px;" data-node="metric-click">
+            <span class="tag">用户操作</span>
+            <h3>点击生成评价指标</h3>
+            <p>触发评价指标生成 Agent。</p>
+          </button>
+          <button class="flow-node agent" style="left:520px; top:120px;" data-node="metric-agent">
+            <span class="tag">Agent</span>
+            <h3>评价指标生成 Agent</h3>
+            <p>生成题目类型、展示指标、详细评审指标。</p>
+          </button>
+          <button class="flow-node action" style="left:760px; top:120px;" data-node="admin-edit">
+            <span class="tag">用户操作</span>
+            <h3>管理员修改指标</h3>
+            <p>修改题目类型、指标、门槛项和标准。</p>
+          </button>
+          <button class="flow-node action" style="left:1000px; top:120px;" data-node="save-metric">
+            <span class="tag">用户操作</span>
+            <h3>点击全部保存</h3>
+            <p>保存指标，并触发 Skill 计划生成。</p>
+          </button>
+
+          <button class="flow-node agent" style="left:380px; top:430px;" data-node="skill-plan-agent">
+            <span class="tag">Agent</span>
+            <h3>评审 Skill 确定 Agent</h3>
+            <p>为本题固定 Skill 调用计划。</p>
+          </button>
+          <button class="flow-node service" style="left:680px; top:430px;" data-node="save-config">
+            <span class="tag">后端服务</span>
+            <h3>保存评审流程配置</h3>
+            <p>保存指标版本、Skill 计划和 Prompt 版本。</p>
+          </button>
+          <button class="flow-node action" style="left:380px; top:730px;" data-node="student-submit">
+            <span class="tag">用户操作</span>
+            <h3>学生提交作业</h3>
+            <p>提交 URL、README、代码包等材料。</p>
+          </button>
+          <button class="flow-node agent" style="left:680px; top:730px;" data-node="gate-agent">
+            <span class="tag">Agent</span>
+            <h3>门槛项评审与证据获取 Agent</h3>
+            <p>先判定门槛，决定是否进入 Skill 取证。</p>
+          </button>
+
+          <button class="flow-node fail" style="left:960px; top:730px;" data-node="gate-fail-result">
+            <span class="tag">失败分支</span>
+            <h3>直接输出不合格结果</h3>
+            <p>不调用 Skill，不进入单题正式评分。</p>
+          </button>
+
+          <button class="flow-node skill" style="left:140px; top:1040px;" data-node="web-skill">
+            <span class="tag">Skill</span>
+            <h3>网页访问 Skill</h3>
+            <p>获取 URL、截图、交互路径证据。</p>
+          </button>
+          <button class="flow-node tool" style="left:180px; top:1190px;" data-node="web-tools">
+            <span class="tag">Tool</span>
+            <h3>网页 Tool</h3>
+            <p>URL校验、截图、页面交互。</p>
+          </button>
+
+          <button class="flow-node skill" style="left:530px; top:1040px;" data-node="doc-skill">
+            <span class="tag">Skill</span>
+            <h3>文档读取 Skill</h3>
+            <p>读取 README、Markdown、PDF、Word。</p>
+          </button>
+          <button class="flow-node tool" style="left:570px; top:1190px;" data-node="doc-tools">
+            <span class="tag">Tool</span>
+            <h3>文档 Tool</h3>
+            <p>解析文本、表格和引用位置。</p>
+          </button>
+
+          <button class="flow-node skill" style="left:920px; top:1040px;" data-node="code-skill">
+            <span class="tag">Skill</span>
+            <h3>代码/压缩包 Skill</h3>
+            <p>读取压缩包、文件树、入口文件。</p>
+          </button>
+          <button class="flow-node tool" style="left:960px; top:1190px;" data-node="code-tools">
+            <span class="tag">Tool</span>
+            <h3>代码 Tool</h3>
+            <p>解压、读文件、沙箱运行。</p>
+          </button>
+
+          <button class="flow-node agent" style="left:530px; top:1655px;" data-node="single-review-agent">
+            <span class="tag">Agent</span>
+            <h3>单题评审 Agent</h3>
+            <p>基于证据包评分并输出题目结果。</p>
+          </button>
+          <button class="flow-node agent" style="left:530px; top:1815px;" data-node="course-review-agent">
+            <span class="tag">Agent</span>
+            <h3>课程评审 Agent</h3>
+            <p>汇总各题结构化结果生成项目评价。</p>
+          </button>
+          <button class="flow-node result" style="left:530px; top:1975px;" data-node="result-page">
+            <span class="tag">结果展示</span>
+            <h3>评审结果页</h3>
+            <p>展示单题结果、课程综合评价和失败分支结果。</p>
+          </button>
+        </div>
+      </div>
+
+      <aside class="detail-panel">
+        <div class="detail-head">
+          <span class="detail-type" id="detailType">用户操作</span>
+          <h2 id="detailTitle">管理员选择题目</h2>
+          <p id="detailDesc">在题库选择需要生成评价指标的题目。</p>
+        </div>
+        <div class="detail-body" id="detailBody"></div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const details = {
+      "admin-select": {
+        type: "用户操作",
+        title: "管理员选择题目",
+        desc: "管理员在题库中选择一个或多个需要生成评价指标的题目。",
+        overview: [
+          "进入题库的“生成评价指标”页面。",
+          "勾选需要生成评价指标的题目，可以选择单题，也可以批量选择多题。",
+          "确认已选题目数量无误后，准备点击“生成评价指标”。"
+        ],
+        input: {
+          "题目编号": "q_coding_web_001",
+          "题目内容": "使用 AI Coding 工具完成一个可运行的 Web 系统，核心功能流程能够完整走通。",
+          "提交文件要求": "系统访问 URL、README 文档、项目代码压缩包"
+        },
+        output: {
+          "页面选中状态": "已选 1 题",
+          "下一步操作": "点击生成评价指标"
+        },
+        passTo: "点击“生成评价指标”按钮，进入下一步。"
+      },
+      "metric-click": {
+        type: "用户操作",
+        title: "点击生成评价指标",
+        desc: "管理员点击按钮后，系统把题目信息传给评价指标生成 Agent。",
+        overview: [
+          "点击页面右侧或底部的“生成评价指标”按钮。",
+          "页面进入生成中状态，右侧展示 Agent 执行进度。",
+          "等待生成完成后，进入评价指标编辑页面。"
+        ],
+        input: {
+          "选中题目": "q_coding_web_001"
+        },
+        output: {
+          "调用方法": "generateQuestionRubric(questionId, questionContent, submitRequirements)",
+          "传入评价指标生成Agent": ["题目编号", "题目内容", "提交文件要求"]
+        },
+        passTo: "系统自动调用评价指标生成 Agent，管理员等待生成结果。"
+      },
+      "metric-agent": {
+        type: "Agent",
+        title: "评价指标生成 Agent",
+        desc: "生成题目类型、学生展示指标、Agent 评审指标、门槛项、不合格规则和建议 Skill。",
+        overview: [
+          "输入没有题目类型候选，只读取题目编号、题目内容、提交文件要求。",
+          "学生展示指标只生成一条，100字以内，是 Agent 评审指标的简要总结。",
+          "Agent 评审指标按“评审维度 > 评审指标”生成，每条指标都有分值、合格要求、优秀要求、不合格判定和证据要求。"
+        ],
+        input: {
+          "题目编号": "q_coding_web_001",
+          "题目内容": "完成一个可运行 Web 系统，核心功能流程能够完整走通。",
+          "提交文件要求": "系统访问 URL、README 文档、项目代码压缩包"
+        },
+        output: {
+          "题目类型": "系统实现题",
+          "学生展示指标": "完成可访问系统、核心流程、README和代码交付，功能可验证且材料清晰。",
+          "Agent评审指标": [
+            {
+              "评审维度": "功能完整性",
+              "维度分值": 50,
+              "评审指标": [
+                {
+                  "指标名称": "系统可访问性",
+                  "分值": 15,
+                  "合格要求": "系统 URL 可正常访问，核心入口能够打开。",
+                  "优秀要求": "访问稳定，入口清晰，页面加载正常，无阻断报错。",
+                  "不合格判定": "未提交 URL、URL 无法访问或核心入口无法打开。",
+                  "证据要求": "URL 状态码、首页截图、错误信息截图。"
+                },
+                {
+                  "指标名称": "核心流程完整性",
+                  "分值": 25,
+                  "合格要求": "至少一个主要功能流程能够从入口走到结果页。",
+                  "优秀要求": "主要流程完整顺畅，关键状态反馈清楚。",
+                  "不合格判定": "核心流程缺失或流程中断。",
+                  "证据要求": "点击路径、关键页面截图、流程结果截图。"
+                }
+              ]
+            },
+            {
+              "评审维度": "工程交付规范",
+              "维度分值": 50,
+              "评审指标": ["README完整性", "代码结构可读性", "交付材料一致性"]
+            }
+          ],
+          "门槛项": [
+            "必须提交系统访问 URL、README 文档和项目代码压缩包。",
+            "系统 URL 可访问，或代码包可解压并能识别核心入口文件。"
+          ],
+          "不合格判定规则": [
+            "未提交任何有效作业材料。",
+            "提交内容与题目要求明显无关。",
+            "核心文件无法读取且无可替代验证证据。"
+          ],
+          "建议Skill类型": ["网页访问 Skill", "文档读取 Skill", "代码/压缩包 Skill"]
+        },
+        passTo: "输出给管理员指标编辑页面。管理员确认后，再传给评审 Skill 确定 Agent。"
+      },
+      "admin-edit": {
+        type: "用户操作",
+        title: "管理员修改指标",
+        desc: "管理员人工检查并修改评价指标、题目类型、门槛项和标准。",
+        overview: [
+          "查看系统生成的题目类型、学生展示指标和 Agent 评审指标。",
+          "根据题目实际要求修改题目类型、分值、合格要求、优秀要求、门槛项或不合格规则。",
+          "确认每项指标都能用于真实评审后，准备点击“全部保存”。"
+        ],
+        input: {
+          "评价指标生成Agent输出": "题目类型、学生展示指标、Agent评审指标、门槛项、不合格规则、建议Skill类型"
+        },
+        output: {
+          "确认后的题目类型": "系统实现题",
+          "确认后的学生展示指标": "完成可访问系统、核心流程、README和代码交付，功能可验证且材料清晰。",
+          "确认后的Agent评审指标": "2个评审维度，6条评审指标，2条门槛项"
+        },
+        passTo: "点击“全部保存”，保存管理员确认后的评价指标。"
+      },
+      "save-metric": {
+        type: "用户操作",
+        title: "点击全部保存",
+        desc: "管理员保存评价指标，系统随后触发评审 Skill 确定 Agent。",
+        overview: [
+          "点击评价指标编辑页面顶部或底部的“全部保存”。",
+          "等待页面提示保存成功。",
+          "保存成功后系统会自动进入评审 Skill 计划生成步骤。"
+        ],
+        input: {
+          "确认后的指标": "题目类型、学生展示指标、详细评审指标、门槛项、不合格规则"
+        },
+        output: {
+          "指标保存结果": "成功",
+          "评价指标版本": "metric_q_coding_web_001_v1",
+          "触发动作": "createSkillPlan(metric_q_coding_web_001_v1)"
+        },
+        passTo: "系统保存指标后，自动触发评审 Skill 确定 Agent。"
+      },
+      "skill-plan-agent": {
+        type: "Agent",
+        title: "评审 Skill 确定 Agent",
+        desc: "根据题目类型、提交文件要求和确认后的评审指标，为本题固定 Skill 计划。",
+        overview: [
+          "同一题目的所有学生作业使用同一套固定 Skill 计划。",
+          "该 Agent 不评分，只确定需要哪些 Skill、每个 Skill 输入什么、输出什么证据。",
+          "输出的 Skill 计划会保存到数据库，学生提交后直接读取。"
+        ],
+        input: {
+          "题目类型": "系统实现题",
+          "提交文件要求": "系统访问 URL、README 文档、项目代码压缩包",
+          "确认后的评审指标": "功能完整性50分、工程交付规范50分",
+          "门槛项": "必须提交 URL、README、代码包",
+          "可用Skill清单": ["网页访问 Skill", "文档读取 Skill", "代码/压缩包 Skill", "图片理解 Skill", "视频理解 Skill", "音频识别 Skill"]
+        },
+        output: {
+          "固定Skill计划": [
+            {
+              "Skill": "网页访问 Skill",
+              "输入": ["系统访问URL", "核心流程要求", "截图要求"],
+              "输出": ["URL可访问状态", "页面截图", "交互路径", "异常信息"],
+              "调用Tool": ["URL校验Tool", "浏览器截图Tool", "页面交互Tool"],
+              "证据传给": "门槛项评审与证据获取 Agent"
+            },
+            {
+              "Skill": "文档读取 Skill",
+              "输入": ["README地址", "题目要求", "提取字段清单"],
+              "输出": ["项目说明摘要", "运行说明", "缺失项", "引用位置"],
+              "调用Tool": ["Markdown解析Tool", "PDF文本提取Tool", "Word文本提取Tool"],
+              "证据传给": "门槛项评审与证据获取 Agent"
+            },
+            {
+              "Skill": "代码/压缩包 Skill",
+              "输入": ["代码压缩包", "入口识别规则", "运行策略"],
+              "输出": ["解压结果", "项目目录树", "入口文件", "核心代码摘要"],
+              "调用Tool": ["压缩包解压Tool", "文件树读取Tool", "代码文本读取Tool", "沙箱运行Tool"],
+              "证据传给": "门槛项评审与证据获取 Agent"
+            }
+          ]
+        },
+        passTo: "输出给后端保存为 skill_plan_q_coding_web_001_v1。"
+      },
+      "save-config": {
+        type: "后端服务",
+        title: "保存评审流程配置",
+        desc: "保存评价指标版本、固定 Skill 计划、Agent Prompt 版本和调用配置。",
+        overview: [
+          "这是后端保存服务，不调用 Agent。",
+          "保存后学生端提交该题时直接读取这个配置。",
+          "保证管理端配置与学生端评审流程串联。"
+        ],
+        input: {
+          "评价指标版本": "metric_q_coding_web_001_v1",
+          "Skill计划版本": "skill_plan_q_coding_web_001_v1",
+          "Agent配置": ["门槛项评审与证据获取 Agent", "单题评审 Agent", "课程评审 Agent"]
+        },
+        output: {
+          "保存结果": "成功",
+          "数据库记录": ["题目评价指标表", "题目Skill计划表", "AgentPrompt版本表", "评审流程配置表"]
+        },
+        passTo: "学生提交作业后，由后端读取这些配置。"
+      },
+      "student-submit": {
+        type: "用户操作",
+        title: "学生提交作业",
+        desc: "学生按题目要求提交作业材料，触发 AI 评审。",
+        overview: [
+          "学生进入作业提交页面。",
+          "按照题目要求上传或填写作业材料，例如系统 URL、README 文档、代码压缩包。",
+          "确认材料完整后，点击“提交作业”开始 AI 评审。"
+        ],
+        input: {
+          "学生编号": "stu_001",
+          "题目编号": "q_coding_web_001",
+          "系统访问URL": "https://demo.example.com/ai-web-app",
+          "README地址": "https://oss.example.com/readme.md",
+          "代码压缩包": "https://oss.example.com/project.zip"
+        },
+        output: {
+          "作业提交记录": "submission_20260731_001",
+          "材料清单": ["系统访问URL", "README文档", "代码压缩包"]
+        },
+        passTo: "提交后系统自动读取本题评审配置，并进入门槛项评审。"
+      },
+      "gate-agent": {
+        type: "Agent",
+        title: "门槛项评审与证据获取 Agent",
+        desc: "先判断门槛项是否满足；不满足直接输出结果，满足则调度 Skill 取证，并接收 Skill 返回结果生成结构化证据包。",
+        overview: [
+          "该 Agent 是分支节点。",
+          "门槛项不满足：直接生成不合格评价结果，不进入 Skill 取证，不进入单题正式评分。",
+          "门槛项满足：按照固定 Skill 计划生成并行取证任务，把对应输入分发给各 Skill。",
+          "三个 Skill 完成取证后，结果返回给该 Agent，由该 Agent 统一整理为结构化证据包。"
+        ],
+        input: {
+          "题目类型": "系统实现题",
+          "题目内容": "完成一个可运行 Web 系统并提交 URL、README、代码压缩包。",
+          "提交文件要求": "系统访问 URL、README 文档、项目代码压缩包",
+          "作业列表": ["系统URL=https://demo.example.com/ai-web-app", "README=https://oss.example.com/readme.md", "代码包=https://oss.example.com/project.zip"],
+          "门槛项": ["必须提交 URL、README、代码包", "URL可访问或代码包可解压并识别入口"],
+          "固定Skill计划": ["网页访问 Skill", "文档读取 Skill", "代码/压缩包 Skill"]
+        },
+        output: {
+          "通过分支": {
+            "门槛项结果": "满足",
+            "Skill任务": [
+              "网页访问 Skill <- 系统URL、核心流程要求、截图要求",
+              "文档读取 Skill <- README地址、题目要求、提取字段清单",
+              "代码/压缩包 Skill <- 代码压缩包、入口识别规则、运行策略"
+            ],
+            "Skill返回结果": [
+              "网页访问 Skill -> URL状态、页面截图、交互路径、异常信息",
+              "文档读取 Skill -> README摘要、运行说明、缺失项、引用位置",
+              "代码/压缩包 Skill -> 目录树、入口文件、核心代码摘要、运行风险"
+            ],
+            "Agent汇总输出": "结构化证据包，包括维度证据、缺失证据和可追溯引用"
+          },
+          "失败分支": {
+            "门槛项结果": "不满足",
+            "直接输出": "题目等级=不合格、评语、优点、缺点、修改建议、评价依据",
+            "后续动作": "不调用 Skill，不进入单题正式评分"
+          }
+        },
+        passTo: "通过时把 Skill 任务分发给各 Skill，接收 Skill 返回结果并生成结构化证据包后传给单题评审 Agent；失败时直接传给结果展示页。"
+      },
+      "gate-fail-result": {
+        type: "失败分支",
+        title: "直接输出不合格结果",
+        desc: "门槛项不满足时的直接结果路径。",
+        overview: [
+          "此路径必须明确展示，因为它不会进入后续 Skill 取证。",
+          "适用于缺少必交文件、内容完全无关、核心文件无法读取等情况。",
+          "评价内容仍要给学生看得懂，包括优点、主要问题和修改建议。"
+        ],
+        input: {
+          "门槛失败原因": "未提交可访问系统 URL，无法验证核心流程。",
+          "已提交材料": ["README文档", "代码压缩包"]
+        },
+        output: {
+          "题目等级": "不合格",
+          "评语": "当前作品已提交 README 和代码包，能够看出基本项目方向；但缺少可访问系统入口，无法验证核心功能流程，因此本次评审不能进入正式评分。",
+          "优点": ["已提交 README 和代码包，具备继续完善的基础。"],
+          "缺点": ["缺少可访问系统 URL，无法验证首页、核心流程和结果页面。"],
+          "修改建议": ["补充可访问 URL，并在 README 中写清楚首页入口、主要操作路径和结果页面位置。"]
+        },
+        passTo: "直接传给评审结果页展示。"
+      },
+      "web-skill": {
+        type: "Skill",
+        title: "网页访问 Skill",
+        desc: "接收门槛 Agent 分发的网页取证任务，调用网页 Tool 生成证据包。",
+        overview: [
+          "Skill 由门槛项评审与证据获取 Agent 调度。",
+          "Skill 内部调用 Tool，不直接评分。",
+          "输出证据包返回门槛项评审与证据获取 Agent，由该 Agent 统一汇总。"
+        ],
+        input: {
+          "系统访问URL": "https://demo.example.com/ai-web-app",
+          "核心流程要求": ["打开首页", "进入任务列表", "查看任务详情", "进入结果展示页"],
+          "对应评审指标": ["系统可访问性", "核心流程完整性", "基础异常反馈"]
+        },
+        output: {
+          "URL可访问状态": "HTTP 200，可访问",
+          "页面截图": ["home.png", "task-list.png", "result.png"],
+          "交互路径": "首页 -> 任务列表 -> 任务详情 -> 结果页",
+          "异常信息": "未发现阻断性页面错误",
+          "缺失证据": ["未覆盖登录失败、空数据等边界状态"]
+        },
+        passTo: "返回门槛项评审与证据获取 Agent，由该 Agent 归档到“功能完整性”维度。"
+      },
+      "web-tools": {
+        type: "Tool",
+        title: "网页 Tool",
+        desc: "网页访问 Skill 内部调用的基础工具集合。",
+        overview: [
+          "Tool 不理解评分标准，只完成具体取证动作。",
+          "Tool 输出原始证据，Skill 负责整理为结构化证据包。"
+        ],
+        input: {
+          "URL": "https://demo.example.com/ai-web-app",
+          "操作路径": ["打开页面", "点击任务列表", "点击详情", "截图结果页"]
+        },
+        output: {
+          "状态码": 200,
+          "截图文件": ["home.png", "task-list.png", "result.png"],
+          "页面错误": []
+        },
+        passTo: "Tool 原始结果返回给网页访问 Skill。"
+      },
+      "doc-skill": {
+        type: "Skill",
+        title: "文档读取 Skill",
+        desc: "读取 README、Markdown、PDF、Word 等文档并输出文档证据。",
+        overview: [
+          "Skill 由门槛项评审与证据获取 Agent 调度。",
+          "内部可调用 Markdown、PDF、Word、表格读取 Tool。",
+          "输出证据包返回门槛项评审与证据获取 Agent，由该 Agent 统一汇总。"
+        ],
+        input: {
+          "README地址": "https://oss.example.com/readme.md",
+          "题目要求": "系统访问 URL、README 文档、项目代码压缩包",
+          "对应评审指标": ["README完整性", "交付材料一致性"]
+        },
+        output: {
+          "文档可读取": true,
+          "项目说明摘要": "作品包含首页、任务列表、任务详情和结果展示页面。",
+          "运行说明": "包含本地启动命令和访问说明。",
+          "缺失项": ["异常状态说明较少", "测试说明较少"],
+          "引用位置": ["README 第2段", "README 运行说明部分"]
+        },
+        passTo: "返回门槛项评审与证据获取 Agent，由该 Agent 归档到“工程交付规范”维度。"
+      },
+      "doc-tools": {
+        type: "Tool",
+        title: "文档 Tool",
+        desc: "文档读取 Skill 内部调用的基础工具集合。",
+        overview: [
+          "支持 Markdown、Word、PDF、表格等文件内容读取。",
+          "输出文本、表格、引用位置等原始证据。"
+        ],
+        input: {
+          "文件地址": "https://oss.example.com/readme.md",
+          "读取类型": ["Markdown正文", "标题层级", "运行说明"]
+        },
+        output: {
+          "正文文本": "项目说明、运行方式、主要功能...",
+          "标题层级": ["项目介绍", "运行方式", "功能说明"],
+          "引用位置": ["第2段", "第4段"]
+        },
+        passTo: "Tool 原始结果返回给文档读取 Skill。"
+      },
+      "code-skill": {
+        type: "Skill",
+        title: "代码/压缩包 Skill",
+        desc: "读取代码压缩包、项目结构和核心代码证据。",
+        overview: [
+          "Skill 由门槛项评审与证据获取 Agent 调度。",
+          "支持读取整个项目结构，也可以在安全沙箱中运行学生代码。",
+          "输出证据包返回门槛项评审与证据获取 Agent，由该 Agent 统一汇总。"
+        ],
+        input: {
+          "项目代码压缩包": "https://oss.example.com/project.zip",
+          "入口识别规则": ["index.html", "package.json", "app.py", "main.py"],
+          "对应评审指标": ["代码结构可读性", "交付材料一致性"]
+        },
+        output: {
+          "解压结果": "成功",
+          "项目目录树": ["index.html", "assets/", "scripts/", "README.md"],
+          "入口文件": "index.html",
+          "核心代码摘要": "包含任务列表渲染、页面切换和结果展示逻辑。",
+          "运行风险": ["未看到自动化测试", "异常状态说明不足"]
+        },
+        passTo: "返回门槛项评审与证据获取 Agent，由该 Agent 归档到“工程交付规范”维度。"
+      },
+      "code-tools": {
+        type: "Tool",
+        title: "代码 Tool",
+        desc: "代码/压缩包 Skill 内部调用的基础工具集合。",
+        overview: [
+          "支持解压压缩包、读取文件树、读取代码文本、识别依赖、沙箱运行。",
+          "Tool 输出原始结构和运行证据，Skill 再整理成证据包。"
+        ],
+        input: {
+          "压缩包地址": "https://oss.example.com/project.zip",
+          "入口候选": ["index.html", "package.json", "app.py"]
+        },
+        output: {
+          "解压状态": "成功",
+          "文件树": ["index.html", "assets/", "scripts/", "README.md"],
+          "入口文件": "index.html",
+          "代码片段": "renderTaskList(), showResultPage()"
+        },
+        passTo: "Tool 原始结果返回给代码/压缩包 Skill。"
+      },
+      "single-review-agent": {
+        type: "Agent",
+        title: "单题评审 Agent",
+        desc: "基于结构化证据包和评审指标输出题目分数、等级和评语。",
+        overview: [
+          "该 Agent 不再调用 Skill，也不读取原始文件。",
+          "只根据结构化证据包、评审指标和不合格规则评分。",
+          "输出题目结构化结果，供课程评审 Agent 汇总。"
+        ],
+        input: {
+          "题目编号": "q_coding_web_001",
+          "题目类型": "系统实现题",
+          "评审指标": "功能完整性50分、工程交付规范50分",
+          "结构化证据包": "由门槛项评审与证据获取 Agent 根据 Skill 返回结果整理得到，包括按维度归档的证据、缺失证据、可追溯引用",
+          "不合格规则": ["未提交有效材料", "核心文件无法读取且无替代证据"]
+        },
+        output: {
+          "题目总分": 88,
+          "题目等级": "优秀",
+          "评语": "作品能够稳定打开，核心流程可验证，README 和代码材料基本完整，整体完成度较高。",
+          "优点": ["系统访问入口清楚，主要流程能够走通。", "README 和代码包能够相互支撑，便于验收。"],
+          "缺点": ["异常状态和测试说明还不够充分。"],
+          "修改建议": ["补充空数据、加载失败、提交失败等状态说明。"],
+          "评价依据": ["URL可访问结果", "关键页面截图", "README摘要", "代码目录树"]
+        },
+        passTo: "传给课程评审 Agent；同时可在单题结果页展示。"
+      },
+      "course-review-agent": {
+        type: "Agent",
+        title: "课程评审 Agent",
+        desc: "汇总所有题目的结构化评审结果，生成课程或项目综合评价。",
+        overview: [
+          "课程评审 Agent 只读取每道题的结构化结果。",
+          "不重新读取原始作业文件，不调用 Skill。",
+          "输出项目等级、总体评价、总体优点、总体缺点和修改意见。"
+        ],
+        input: {
+          "学生编号": "stu_001",
+          "课程编号": "course_ai_001",
+          "单题评审结果": [
+            "题目1：88分，优秀",
+            "题目2：82分，达标",
+            "题目3：90分，优秀"
+          ]
+        },
+        output: {
+          "项目等级": "优秀",
+          "项目综合评价": "学生能够较完整地完成课程任务，作品在功能实现、材料交付和表达规范上表现较好。",
+          "总体优点": ["多数任务完成度较高，关键证据较充分。", "作品交付材料较完整，便于复核。"],
+          "总体缺点": ["部分任务对异常状态和测试过程的说明不足。"],
+          "总体修改意见": ["补充测试说明、异常状态截图和关键流程说明。"]
+        },
+        passTo: "传给项目综合评审结果页展示。"
+      },
+      "result-page": {
+        type: "结果展示",
+        title: "评审结果页",
+        desc: "展示门槛失败结果、单题评审结果和课程综合评价。",
+        overview: [
+          "这是前端展示节点，不调用 Agent、Skill 或 Tool。",
+          "如果门槛项不合格，页面直接展示不合格评语、优点、缺点和修改建议。",
+          "如果门槛项通过，页面展示单题结果；当课程下所有题目完成评审后，展示课程综合评价。"
+        ],
+        input: {
+          "门槛失败分支输入": "题目等级、不合格评语、优点、缺点、修改建议、评价依据",
+          "正式评审分支输入": "单题总分、单题等级、单题评语、指标得分明细、课程综合评价",
+          "页面配置": "是否展示课程综合结果、是否展示各题展开详情"
+        },
+        output: {
+          "学生可见内容": [
+            "项目等级或题目等级",
+            "综合评价",
+            "优点",
+            "缺点",
+            "修改建议",
+            "各题评价结果",
+            "可展开的证据依据摘要"
+          ],
+          "交互": "点击各题结果可展开或折叠详情。"
+        },
+        passTo: "流程终点。结果可写入数据库，并用于教师抽查样本库。"
+      }
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function renderList(items) {
+      return `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+    }
+
+    function renderJson(value) {
+      return `<pre class="json-box">${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
+    }
+
+    function renderDetail(key) {
+      const data = details[key];
+      if (!data) return;
+      document.querySelectorAll(".flow-node").forEach((node) => {
+        node.classList.toggle("active", node.dataset.node === key);
+      });
+      document.getElementById("detailType").textContent = data.type;
+      document.getElementById("detailTitle").textContent = data.title;
+      document.getElementById("detailDesc").textContent = data.desc;
+      const isUserAction = data.type === "用户操作";
+      document.getElementById("detailBody").innerHTML = isUserAction
+        ? `
+          <section class="info-block">
+            <h3>操作步骤</h3>
+            ${renderList(data.overview)}
+          </section>
+          <section class="info-block">
+            <h3>下一步</h3>
+            <p>${escapeHtml(data.passTo)}</p>
+          </section>
+        `
+        : `
+          <section class="info-block">
+            <h3>模块说明</h3>
+            ${renderList(data.overview)}
+          </section>
+          <section class="info-block">
+            <h3>输入</h3>
+            ${renderJson(data.input)}
+          </section>
+          <section class="info-block">
+            <h3>输出</h3>
+            ${renderJson(data.output)}
+          </section>
+          <section class="info-block">
+            <h3>数据传递</h3>
+            <p>${escapeHtml(data.passTo)}</p>
+          </section>
+        `;
+    }
+
+    document.querySelectorAll(".flow-node").forEach((node) => {
+      node.addEventListener("click", () => renderDetail(node.dataset.node));
+    });
+
+    renderDetail("admin-select");
+  </script>
+</body>
+</html>

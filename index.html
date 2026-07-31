@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<!--
+  文件说明：AI 评审流程静态演示 Demo 入口页。
+  作用：展示 Demo 的页面入口、整体流程说明和演示范围，不调用真实后端或大模型。
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI评审流程演示 Demo</title>
+  <link rel="stylesheet" href="demo.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">AI</div>
+        <div>
+          <h1 class="brand-title">AI评审流程演示 Demo</h1>
+          <div class="brand-subtitle">静态页面演示，不调用真实大模型和后端接口</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="active" href="index.html">流程入口</a>
+        <a href="admin_metric_demo.html">管理端</a>
+        <a href="student_review_demo.html">学生端</a>
+        <a href="interactive_flow_demo.html">交互总流程图</a>
+        <a href="result_demo.html">结果页</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="eyebrow">Agent + Skill + Tool</div>
+      <h2>从评价指标生成到学生作业评审的完整前端演示</h2>
+      <p>
+        本 Demo 参考现有工作坊前端页面的卡片、右侧智能诊断台和结果展示风格，模拟管理员生成评价指标、固定 Skill 计划、学生提交作业、门槛项评审、证据获取、单题评分和课程综合评价的全过程。
+      </p>
+      <div class="button-row">
+        <a class="btn" href="admin_metric_demo.html">查看管理端生成指标</a>
+        <a class="btn secondary" href="student_review_demo.html">查看学生端评审流程</a>
+        <a class="btn secondary" href="interactive_flow_demo.html">查看交互总流程图</a>
+      </div>
+    </section>
+
+    <section class="grid">
+      <a class="card" href="admin_metric_demo.html">
+        <h3>管理端：生成评价指标</h3>
+        <p>演示管理员填写题目后点击“生成评价指标”，前端显示评审指标生成 Agent 和评审 Skill 确定 Agent 的执行过程。</p>
+      </a>
+      <a class="card" href="student_review_demo.html">
+        <h3>学生端：提交作业并评审</h3>
+        <p>演示学生提交作业后，系统先执行门槛项评审，满足条件后并行调用 Skill/Tool 获取证据，再进入单题评审。</p>
+      </a>
+      <a class="card" href="result_demo.html">
+        <h3>结果页：课程综合评价</h3>
+        <p>演示最终报告页面，包括项目等级、综合评价、优点、问题、修改建议和各作业评审结果。</p>
+      </a>
+      <a class="card" href="interactive_flow_demo.html">
+        <h3>交互总流程图</h3>
+        <p>点击每个 Agent、Skill、Tool 或业务模块，查看案例输入输出、Agent Prompt 和详细执行规则。</p>
+      </a>
+    </section>
+  </main>
+</body>
+</html>
