@@ -1,0 +1,2084 @@
+<!--
+  文件说明：AI 评审数据积累交互图。
+  作用：展示 AI 评审、教师盲审与 Prompt 优化过程中，采集数据和生成数据如何进入数据库沉淀。
+  使用方式：直接双击本 HTML 文件即可在浏览器中查看和交互。
+-->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 评审数据积累图</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --ink: #152033;
+      --muted: #66758c;
+      --line: #d9e1ee;
+      --primary: #4f63f6;
+      --primary-soft: #eef0ff;
+      --green: #12a874;
+      --green-soft: #e9fbf4;
+      --orange: #e98a18;
+      --orange-soft: #fff4e3;
+      --purple: #8257e6;
+      --purple-soft: #f3edff;
+      --blue: #2786e3;
+      --blue-soft: #eaf4ff;
+      --red: #d94a4a;
+      --red-soft: #fff0f0;
+      --shadow: 0 16px 40px rgba(21, 32, 51, 0.09);
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        linear-gradient(90deg, rgba(79, 99, 246, 0.05) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(79, 99, 246, 0.05) 1px, transparent 1px),
+        var(--bg);
+      background-size: 28px 28px;
+      color: var(--ink);
+    }
+
+    .page {
+      max-width: 1880px;
+      margin: 0 auto;
+      padding: 28px 34px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(26px, 3vw, 42px);
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 980px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 15px;
+    }
+
+    .blind-note {
+      min-width: 280px;
+      border: 1px solid rgba(233, 138, 24, 0.28);
+      background: var(--orange-soft);
+      color: #7a470a;
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-size: 14px;
+      line-height: 1.65;
+      box-shadow: 0 10px 30px rgba(233, 138, 24, 0.12);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    .version-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin: 18px 0 8px;
+      padding: 12px;
+      border: 1px solid rgba(217, 225, 238, 0.9);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.74);
+      box-shadow: 0 10px 26px rgba(21, 32, 51, 0.05);
+    }
+
+    .version-label {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      margin-right: 4px;
+    }
+
+    .filter-btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 9px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.18s ease;
+    }
+
+    .filter-btn:hover,
+    .filter-btn.active {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .version-btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      transition: 0.18s ease;
+    }
+
+    .version-btn:hover,
+    .version-btn.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(79, 99, 246, 0.18);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 480px;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .map-card,
+    .detail-panel,
+    .table-panel {
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(217, 225, 238, 0.9);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .map-card {
+      padding: 20px;
+      overflow-x: auto;
+      overflow-y: visible;
+    }
+
+    .lane-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(245px, 1fr));
+      gap: 18px;
+      align-items: stretch;
+      min-width: 1550px;
+    }
+
+    .lane {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.86));
+    }
+
+    .lane.hidden-by-version {
+      display: none;
+    }
+
+    .lane.ai {
+      border-color: rgba(79, 99, 246, 0.28);
+    }
+
+    .lane.teacher {
+      border-color: rgba(233, 138, 24, 0.35);
+      background: linear-gradient(180deg, rgba(255, 244, 227, 0.72), rgba(255, 255, 255, 0.92));
+    }
+
+    .lane.optimize {
+      border-color: rgba(18, 168, 116, 0.28);
+      background: linear-gradient(180deg, rgba(233, 251, 244, 0.78), rgba(255, 255, 255, 0.92));
+    }
+
+    .lane-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+      min-height: 40px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .lane-title span {
+      min-width: 0;
+    }
+
+    .lane-title small {
+      flex-shrink: 0;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .step {
+      position: relative;
+      width: 100%;
+      text-align: left;
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      border-radius: 13px;
+      padding: 13px 14px;
+      margin-bottom: 30px;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(21, 32, 51, 0.05);
+      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .step:last-child {
+      margin-bottom: 0;
+    }
+
+    .step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -22px;
+      width: 2px;
+      height: 17px;
+      background: var(--line);
+      transform: translateX(-50%);
+    }
+
+    .step:not(:last-child)::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -28px;
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 8px solid var(--line);
+      transform: translateX(-50%);
+    }
+
+    .step:hover,
+    .step.active {
+      transform: translateY(-2px);
+      border-color: var(--primary);
+      box-shadow: 0 14px 28px rgba(79, 99, 246, 0.14);
+    }
+
+    .step.hidden-by-filter {
+      opacity: 0.28;
+      filter: grayscale(0.35);
+    }
+
+    .step.hidden-by-version {
+      display: none;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 9px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 7px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .tag.generated {
+      background: var(--purple-soft);
+      color: var(--purple);
+    }
+
+    .tag.collected {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .tag.blind {
+      background: var(--orange-soft);
+      color: var(--orange);
+    }
+
+    .tag.db {
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .step-title {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .step-desc {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+
+    .bridge-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .bridge {
+      border: 1px dashed var(--line);
+      background: var(--surface-soft);
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .bridge strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .detail-panel {
+      position: sticky;
+      top: 18px;
+      padding: 20px;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+    }
+
+    .detail-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .detail-title {
+      margin: 12px 0 6px;
+      font-size: 21px;
+      line-height: 1.35;
+    }
+
+    .detail-summary {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 13.5px;
+      line-height: 1.7;
+    }
+
+    .detail-section {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+
+    .detail-section h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+
+    .detail-section ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .field-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 7px;
+    }
+
+    .field {
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      border-radius: 8px;
+      padding: 7px 9px;
+      color: var(--ink);
+      font-size: 12px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .field.suggested {
+      border-color: rgba(233, 138, 24, 0.32);
+      background: var(--orange-soft);
+      color: #7a470a;
+    }
+
+    .db-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .db-item {
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      border-radius: 10px;
+      padding: 9px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .db-item code {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--primary);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    .table-panel {
+      margin-top: 18px;
+      padding: 20px;
+    }
+
+    .table-panel h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1680px;
+      font-size: 12.5px;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 12px 14px;
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.65;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    th {
+      background: var(--surface-soft);
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    th:nth-child(1),
+    td:nth-child(1) {
+      width: 150px;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+      width: 250px;
+    }
+
+    th:nth-child(3),
+    td:nth-child(3) {
+      width: 650px;
+    }
+
+    th:nth-child(4),
+    td:nth-child(4) {
+      width: 300px;
+    }
+
+    th:nth-child(5),
+    td:nth-child(5) {
+      width: 260px;
+    }
+
+    th:nth-child(6),
+    td:nth-child(6) {
+      width: 260px;
+    }
+
+    td {
+      color: var(--muted);
+    }
+
+    td code {
+      color: var(--primary);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--primary);
+    }
+
+    .dot.collected {
+      background: var(--green);
+    }
+
+    .dot.generated {
+      background: var(--purple);
+    }
+
+    .dot.blind {
+      background: var(--orange);
+    }
+
+    .dot.db {
+      background: var(--blue);
+    }
+
+    @media (max-width: 1280px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-panel {
+        position: static;
+      }
+
+      .lane-grid {
+        overflow-x: auto;
+        padding-bottom: 6px;
+      }
+
+      .lane {
+        min-width: 220px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        padding: 18px;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .blind-note {
+        min-width: 0;
+      }
+
+      .lane-grid,
+      .bridge-row {
+        grid-template-columns: 1fr;
+      }
+
+      .lane {
+        min-width: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <h1 id="page-title">AI 评审数据积累图</h1>
+        <p class="subtitle">
+          从管理员创建题目与评价指标开始，到学生提交作品、系统构建证据包、AI 独立评审、教师盲审抽查，再到 Agent Prompt 与评审能力优化，展示每一步采集和生成的数据如何进入数据库沉淀。
+        </p>
+      </div>
+      <aside class="blind-note">
+        <strong>教师抽查为盲审：</strong>教师只看到题目和学生作品，不看到 AI 分数、AI 评语、Agent 调用结果。教师独立给出评价维度、评价指标和评审结果，这些数据后续作为 AI 评审优化样本。
+      </aside>
+    </section>
+
+    <nav class="version-toolbar" aria-label="版本选择">
+      <span class="version-label">版本选择</span>
+      <button class="version-btn" data-version="V1版" type="button">V1版</button>
+      <button class="version-btn active" data-version="V2 优化版" type="button">V2 优化版</button>
+    </nav>
+
+    <nav class="toolbar" aria-label="数据类型筛选">
+      <button class="filter-btn active" data-filter="all" type="button">全部数据</button>
+      <button class="filter-btn" data-filter="collected" type="button">采集数据</button>
+      <button class="filter-btn" data-filter="generated" type="button">AI 生成数据</button>
+      <button class="filter-btn" data-filter="blind" type="button">教师盲审数据</button>
+      <button class="filter-btn" data-filter="db" type="button">数据库沉淀</button>
+    </nav>
+
+    <section class="layout">
+      <div class="map-card">
+        <div class="lane-grid" id="flow-map" aria-label="AI 评审数据积累流程图"></div>
+        <div class="bridge-row">
+          <div class="bridge">
+            <strong>AI 与教师两条评审链路相互隔离</strong>
+            AI 评审先产生结构化结果；教师抽查任务只读取题目和学生作品，不读取 AI 结果。
+          </div>
+          <div class="bridge">
+            <strong>教师盲审独立完成</strong>
+            教师只看到题目和学生作业，独立给出评价维度、评价指标和评审结果。
+          </div>
+          <div class="bridge">
+            <strong>优化不影响学生当前成绩</strong>
+            教师盲审数据进入人审样本库和优化建议库，经管理员确认后才形成新的 Agent 版本。
+          </div>
+        </div>
+      </div>
+
+      <aside class="detail-panel" aria-live="polite">
+        <span class="detail-kicker" id="detail-type">数据库沉淀</span>
+        <h2 class="detail-title" id="detail-title">点击任意模块查看数据详情</h2>
+        <p class="detail-summary" id="detail-summary">
+          每个模块会展示采集数据、生成数据、关键字段、写入表和后续用途。
+        </p>
+
+        <div class="detail-section">
+          <h3>采集/生成的数据</h3>
+          <ul id="detail-data"></ul>
+        </div>
+
+        <div class="detail-section">
+          <h3>关键字段</h3>
+          <div class="field-list" id="detail-fields"></div>
+        </div>
+
+        <div class="detail-section">
+          <h3>数据库存储</h3>
+          <div class="db-list" id="detail-tables"></div>
+        </div>
+
+        <div class="detail-section">
+          <h3>数据用途</h3>
+          <ul id="detail-usage"></ul>
+        </div>
+      </aside>
+    </section>
+
+    <section class="table-panel">
+      <h2>数据库数据沉淀总览</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>数据类别</th>
+              <th>版本</th>
+              <th>数据库/表</th>
+              <th>存储内容</th>
+              <th>关键关系</th>
+              <th>用途</th>
+            </tr>
+          </thead>
+          <tbody id="db-summary"></tbody>
+        </table>
+      </div>
+      <div class="legend" aria-label="图例">
+        <span class="legend-item"><span class="dot collected"></span>采集数据</span>
+        <span class="legend-item"><span class="dot generated"></span>AI 生成数据</span>
+        <span class="legend-item"><span class="dot blind"></span>教师盲审数据</span>
+        <span class="legend-item"><span class="dot db"></span>数据库沉淀</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const field = (version, key, name) => ({ version, key, name });
+    const v1 = (key, name) => field("V1版", key, name);
+    const v2 = (key, name) => field("V2 优化版", key, name);
+    const common = (key, name) => field("教师盲审通用", key, name);
+
+    const lanes = [
+      {
+        id: "admin",
+        title: "管理端配置",
+        subtitle: "题库、指标、流程",
+        className: "ai",
+        nodes: [
+          {
+            id: "question-config",
+            title: "题目配置入库",
+            desc: "管理员在题库中维护题目，系统按现有题库表保存题库、题目和题目内容。",
+            type: ["collected", "db"],
+            data: [
+              "V1版：课程、章节、小节、题库和题目分别保存到 nexai_course、nexai_course_chapters、nexai_course_sections、nexai_training_bank、nexai_training_bank_question。",
+              "V2 优化版：独立 AI 服务保留可迁移的工作坊与作业结构，课程项目保存到 workshops，作业保存到 workshop_training_tasks。",
+              "V1 与 V2 的区别：V1 依赖 NexAI 业务库题库结构；V2 作为独立 AI 评审项目，需要能被其他系统直接传入课程/题目/作业配置。"
+            ],
+            fields: [
+              v1("nexai_course.id", "课程ID"),
+              v1("nexai_course.title", "课程标题"),
+              v1("nexai_course.summary", "课程介绍/详情"),
+              v1("nexai_course_chapters.id", "章节ID"),
+              v1("nexai_course_chapters.course_id", "所属课程ID"),
+              v1("nexai_course_sections.id", "小节ID"),
+              v1("nexai_course_sections.traine_id", "绑定题库ID"),
+              v1("nexai_training_bank.id", "题库ID"),
+              v1("nexai_training_bank.name", "题库名称"),
+              v1("nexai_training_bank.fields_json", "题库兼容字段JSON"),
+              v1("nexai_training_bank_question.id", "题目ID"),
+              v1("nexai_training_bank_question.traine_id", "所属题库ID"),
+              v1("nexai_training_bank_question.type", "题目类型"),
+              v1("nexai_training_bank_question.label", "题目内容"),
+              v1("nexai_training_bank_question.required", "是否必答"),
+              v1("nexai_training_bank_question.sort_order", "题目排序"),
+              v2("workshops.workshop_id", "工作坊ID"),
+              v2("workshops.workshop_name", "工作坊名称"),
+              v2("workshops.course_name", "课程名称"),
+              v2("workshops.course_intro", "课程介绍"),
+              v2("workshops.status", "工作坊状态"),
+              v2("workshops.current_rubric_id", "当前评价指标ID"),
+              v2("workshop_training_tasks.task_id", "作业ID"),
+              v2("workshop_training_tasks.workshop_id", "所属工作坊ID"),
+              v2("workshop_training_tasks.task_title", "作业标题"),
+              v2("workshop_training_tasks.task_detail", "作业内容"),
+              v2("workshop_training_tasks.submission_requirements", "提交要求"),
+              v2("workshop_training_tasks.accepted_file_types", "允许文件类型")
+            ],
+            tables: [
+              ["V1：nexai_course / nexai_course_chapters / nexai_course_sections", "V1版课程、章节、小节"],
+              ["V1：nexai_training_bank / nexai_training_bank_question", "V1版题库和题目"],
+              ["V2：workshops / workshop_training_tasks", "优化版独立 AI 评审项目的课程与作业配置"]
+            ],
+            usage: [
+              "作为评价指标生成 Agent 的题目输入。",
+              "作为学生端作业/习题页面的题目来源。",
+              "作为 AI 评审与教师盲审共用的题目基准。"
+            ]
+          },
+          {
+            id: "rubric-agent",
+            title: "评价指标生成 Agent",
+            desc: "Agent 生成结果写入评价指标表和指标修订表，保留输入、输出、版本与管理员修改链路。",
+            type: ["generated", "db"],
+            data: [
+              "V1版：题目级评价指标保存到 nexai_training_bank_evaluation_indicator，修订历史保存到 nexai_training_bank_evaluation_indicator_revision。",
+              "V2 优化版：Agent 草稿保存到 ai_rubric_drafts，管理员确认后的评价指标主表保存到 ai_rubrics，维度/指标明细保存到 ai_rubric_items。",
+              "V2 需要同时保存学生展示指标和 Agent 评审指标：学生展示指标为 Agent 评审指标的简版总结，内容必须一致。"
+            ],
+            fields: [
+              v1("nexai_training_bank_evaluation_indicator.id", "评价指标记录ID"),
+              v1("nexai_training_bank_evaluation_indicator.question_bank_id", "题库ID"),
+              v1("nexai_training_bank_evaluation_indicator.question_id", "题目ID"),
+              v1("nexai_training_bank_evaluation_indicator.question_title", "题目标题"),
+              v1("nexai_training_bank_evaluation_indicator.question_type", "题目类型"),
+              v1("nexai_training_bank_evaluation_indicator.question_content_json", "题目内容快照"),
+              v1("nexai_training_bank_evaluation_indicator.indicator_json", "评价指标JSON"),
+              v1("nexai_training_bank_evaluation_indicator.agent_indicator_json", "Agent评审指标JSON"),
+              v1("nexai_training_bank_evaluation_indicator.final_indicator_json", "管理员确认指标JSON"),
+              v1("nexai_training_bank_evaluation_indicator.generation_input_json", "指标生成输入JSON"),
+              v1("nexai_training_bank_evaluation_indicator.generation_output_json", "指标生成输出JSON"),
+              v1("nexai_training_bank_evaluation_indicator.status", "指标状态"),
+              v1("nexai_training_bank_evaluation_indicator_revision.revision_type", "修订类型"),
+              v1("nexai_training_bank_evaluation_indicator_revision.source_type", "修订来源"),
+              v1("nexai_training_bank_evaluation_indicator_revision.indicator_json", "本次修订指标JSON"),
+              v2("ai_rubric_drafts.rubric_draft_id", "评价指标草稿ID"),
+              v2("ai_rubric_drafts.workshop_id", "工作坊ID"),
+              v2("ai_rubric_drafts.generator_agent_key", "指标生成Agent标识"),
+              v2("ai_rubric_drafts.input_payload", "指标生成Agent输入"),
+              v2("ai_rubric_drafts.rubric_json", "指标生成Agent输出"),
+              v2("ai_rubrics.rubric_id", "正式评价指标ID"),
+              v2("ai_rubrics.rubric_title", "评价指标标题"),
+              v2("ai_rubrics.total_score", "总分"),
+              v2("ai_rubrics.rubric_json", "完整评价指标JSON"),
+              v2("ai_rubrics.confirmed_by", "确认管理员ID"),
+              v2("ai_rubric_items.criterion_id", "评价指标明细ID"),
+              v2("ai_rubric_items.criterion_name", "评价维度/指标名称"),
+              v2("ai_rubric_items.score", "指标分值"),
+              v2("ai_rubric_items.description", "学生展示指标摘要"),
+              v2("ai_rubric_items.excellent_standard", "优秀标准"),
+              v2("ai_rubric_items.qualified_standard", "合格标准"),
+              v2("ai_rubric_items.unqualified_standard", "不合格标准"),
+              v2("ai_rubric_items.review_points", "Agent评审关注点"),
+              v2("ai_rubric_items.suggested_agent_types", "建议评审Agent类型")
+            ],
+            tables: [
+              ["V1：nexai_training_bank_evaluation_indicator", "V1版题目当前评价指标"],
+              ["V1：nexai_training_bank_evaluation_indicator_revision", "V1版评价指标修订历史"],
+              ["V2：ai_rubric_drafts / ai_rubrics / ai_rubric_items", "优化版评价指标草稿、正式指标和明细"]
+            ],
+            usage: [
+              "学生端展示 final_indicator_json 中的简版评价指标。",
+              "AI 单题评审读取 final_indicator_json 或 agent_indicator_json 中的详细指标。",
+              "教师端不展示 AI 评价指标和 AI 评审结果；教师独立填写评价维度、评价指标和评审结果。"
+            ]
+          },
+          {
+            id: "admin-confirm",
+            title: "管理员确认指标",
+            desc: "管理员保存后的内容成为本题最终评价标准，并记录是否编辑及修改差异。",
+            type: ["collected", "db"],
+            data: [
+              "V1版：管理员保存后更新 final_indicator_json，并生成 revision 记录。",
+              "V2 优化版：管理员确认后生成 ai_rubrics 和 ai_rubric_items 的正式版本。",
+              "两版共同要求：确认后的指标用于学生展示、AI 评审、教师盲审的同一题目基准。"
+            ],
+            fields: [
+              v1("nexai_training_bank_evaluation_indicator.final_indicator_json", "管理员最终评价指标"),
+              v1("nexai_training_bank_evaluation_indicator.final_revision_id", "最终修订版本ID"),
+              v1("nexai_training_bank_evaluation_indicator.is_edited", "是否修改过Agent结果"),
+              v1("nexai_training_bank_evaluation_indicator.status", "指标状态"),
+              v1("nexai_training_bank_evaluation_indicator.updater", "更新人"),
+              v1("nexai_training_bank_evaluation_indicator.update_time", "更新时间"),
+              v2("ai_rubrics.status", "正式指标状态"),
+              v2("ai_rubrics.confirmed_by", "确认管理员ID"),
+              v2("ai_rubrics.confirmed_at", "确认时间"),
+              v2("ai_rubric_items.sort_order", "指标排序"),
+              v2("ai_audit_logs.actor_id", "操作人ID"),
+              v2("ai_audit_logs.action", "确认动作"),
+              v2("ai_audit_logs.target_type", "操作对象类型"),
+              v2("ai_audit_logs.target_id", "操作对象ID"),
+              v2("ai_audit_logs.before_snapshot", "确认前快照"),
+              v2("ai_audit_logs.after_snapshot", "确认后快照")
+            ],
+            tables: [
+              ["V1：nexai_training_bank_evaluation_indicator / nexai_training_bank_evaluation_indicator_revision", "V1版管理员保存后的指标和修订记录"],
+              ["V2：ai_rubrics / ai_rubric_items / ai_audit_logs", "优化版正式指标、指标明细和操作审计"]
+            ],
+            usage: [
+              "冻结本题 AI 评审标准。",
+              "冻结本题教师盲审标准。",
+              "后续做 AI 评审优化复盘时，能回溯当时使用的标准版本。"
+            ]
+          },
+          {
+            id: "flow-agent",
+            title: "评审流程生成 Agent",
+            desc: "管理员保存指标后，系统生成题目级评审流程；V2版同时生成 Skill 调用要求。",
+            type: ["generated", "db"],
+            data: [
+              "V1版：题目级流程主数据保存在 nexai_training_bank_review_flow，评审过程只调度 Agent。",
+              "V2 优化版：评审流程拆成流程主表、指标表、Agent调度表、Skill要求表，并增加题目类型Skill模板。",
+              "V2 的差异：不只保存 flow_json，还把每条指标的 Agent、Skill、材料类型、权重、取证目标拆开保存。"
+            ],
+            fields: [
+              v1("nexai_training_bank_review_flow.id", "评审流程记录ID"),
+              v1("nexai_training_bank_review_flow.question_bank_id", "题库ID"),
+              v1("nexai_training_bank_review_flow.question_id", "题目ID"),
+              v1("nexai_training_bank_review_flow.question_title", "题目标题"),
+              v1("nexai_training_bank_review_flow.question_type", "题目类型"),
+              v1("nexai_training_bank_review_flow.flow_json", "流程JSON"),
+              v1("nexai_training_bank_review_flow.generation_input_json", "流程生成输入JSON"),
+              v1("nexai_training_bank_review_flow.generation_output_json", "流程生成输出JSON"),
+              v1("nexai_training_bank_review_flow.status", "流程状态"),
+              v2("ai_review_flows.review_flow_id", "评审流程ID"),
+              v2("ai_review_flows.rubric_id", "评价指标ID"),
+              v2("ai_review_flows.generator_agent_version_id", "流程生成Agent版本ID"),
+              v2("ai_review_flows.review_rounds", "基础评审轮数"),
+              v2("ai_review_flows.max_rounds", "最大评审轮数"),
+              v2("ai_review_flows.aggregation_rule", "汇总规则"),
+              v2("ai_review_flows.consensus_config", "总评配置"),
+              v2("ai_review_flow_criteria.criterion_id", "流程内评价指标ID"),
+              v2("ai_review_flow_agents.agent_key", "指标评审Agent标识"),
+              v2("ai_review_flow_agents.weight", "Agent权重"),
+              v2("ai_review_flow_agents.required_asset_types", "必需材料类型"),
+              v2("ai_review_flow_agents.agent_review_focus", "Agent评审关注点"),
+              v2("ai_review_flow_skill_requirements.skill_key", "Skill标识"),
+              v2("ai_review_flow_skill_requirements.material_types", "Skill处理材料类型"),
+              v2("ai_review_flow_skill_requirements.process_goal", "Skill取证目标"),
+              v2("ai_question_type_skill_templates.question_type", "题目类型"),
+              v2("ai_question_type_skill_templates.recommended_skills", "推荐Skill列表"),
+              v2("ai_question_type_skill_templates.gate_rules", "门槛项规则")
+            ],
+            tables: [
+              ["V1：nexai_training_bank_review_flow", "V1版题目级Agent评审流程"],
+              ["V2：ai_review_flows / ai_review_flow_criteria / ai_review_flow_agents / ai_review_flow_skill_requirements", "优化版可拆解、可追溯的评审流程"],
+              ["V2：ai_question_type_skill_templates", "题目类型对应的Skill模板"]
+            ],
+            usage: [
+              "学生提交后按题目直接复用固定评审流程。",
+              "保证同一道题不同学生使用相同评审流程。",
+              "V2版避免只按文件后缀选择 Skill，按题目类型和评价指标取证。"
+            ]
+          }
+        ]
+      },
+      {
+        id: "student",
+        title: "学生提交",
+        subtitle: "提交记录、文件对象、素材索引",
+        className: "",
+        nodes: [
+          {
+            id: "submission",
+            title: "学生提交作品",
+            desc: "学生的题目作答进入用户题目提交表，上传文件进入 infra_file，AI 服务再生成素材索引。",
+            type: ["collected", "db"],
+            data: [
+              "V1版：题目作答保存到 nexai_user_sections_question，上传文件保存到 infra_file。",
+              "V2 优化版：独立 AI 评审项目保存 workshop_submissions 和 workshop_submission_files。",
+              "V2 的差异：每次提交有 submission_id，文件明细、OSS地址、解析状态和内容哈希独立保存，方便跨系统调用。"
+            ],
+            fields: [
+              v1("nexai_user_sections_question.id", "学生题目提交ID"),
+              v1("nexai_user_sections_question.course_id", "课程ID"),
+              v1("nexai_user_sections_question.section_id", "小节ID"),
+              v1("nexai_user_sections_question.traine_Id", "题库ID"),
+              v1("nexai_user_sections_question.question_id", "题目ID"),
+              v1("nexai_user_sections_question.user_id", "学生用户ID"),
+              v1("nexai_user_sections_question.type", "题目类型"),
+              v1("nexai_user_sections_question.label", "题目内容"),
+              v1("nexai_user_sections_question.answer", "学生作答"),
+              v1("nexai_user_sections_question.value", "提交值"),
+              v1("infra_file.id", "文件ID"),
+              v1("infra_file.name", "文件名"),
+              v1("infra_file.path", "文件路径"),
+              v1("infra_file.url", "文件URL"),
+              v1("infra_file.type", "文件类型"),
+              v1("infra_file.size", "文件大小"),
+              v2("workshop_submissions.submission_id", "学生提交ID"),
+              v2("workshop_submissions.workshop_id", "工作坊ID"),
+              v2("workshop_submissions.task_id", "作业ID"),
+              v2("workshop_submissions.student_id", "学生ID"),
+              v2("workshop_submissions.submission_title", "提交标题"),
+              v2("workshop_submissions.markdown_content", "Markdown/文本内容"),
+              v2("workshop_submissions.submitted_format", "提交格式"),
+              v2("workshop_submission_files.file_id", "提交文件ID"),
+              v2("workshop_submission_files.file_name", "文件名"),
+              v2("workshop_submission_files.file_type", "文件类型"),
+              v2("workshop_submission_files.oss_url", "OSS文件地址"),
+              v2("workshop_submission_files.content_hash", "文件内容哈希"),
+              v2("workshop_submission_files.parse_status", "解析状态")
+            ],
+            tables: [
+              ["V1：nexai_user_sections_question / infra_file", "V1版学生作答和文件元数据"],
+              ["V2：workshop_submissions / workshop_submission_files", "优化版独立 AI 评审服务的学生提交和文件明细"]
+            ],
+            usage: [
+              "作为 AI 评审流程的原始输入。",
+              "作为教师盲审读取作品的来源。",
+              "作为复评、追踪、问题定位的数据基准。"
+            ]
+          },
+          {
+            id: "asset-index",
+            title: "作品素材索引",
+            desc: "AI 服务把提交内容整理为标准素材记录，后续证据包、Skill 运行、Tool 运行都引用素材 ID。",
+            versions: ["V2 优化版"],
+            type: ["generated", "db"],
+            data: [
+              "V2 优化版：增加 ai_submission_preprocess_jobs 和 ai_submission_assets，用于保存预处理任务、文件类型资产和可评审资产。",
+              "V2 的差异：先形成预处理任务，再把文件、URL、压缩包内部文件拆成资产和素材索引，后续证据包引用素材ID。"
+            ],
+            fields: [
+              v2("ai_submission_preprocess_jobs.preprocess_job_id", "预处理任务ID"),
+              v2("ai_submission_preprocess_jobs.submission_id", "学生提交ID"),
+              v2("ai_submission_preprocess_jobs.review_flow_id", "评审流程ID"),
+              v2("ai_submission_preprocess_jobs.status", "预处理状态"),
+              v2("ai_submission_preprocess_jobs.evidence_bundle", "预处理证据快照"),
+              v2("ai_submission_preprocess_jobs.file_type_assets", "按文件类型归档的资产"),
+              v2("ai_submission_assets.asset_id", "资产ID"),
+              v2("ai_submission_assets.source_file_id", "来源文件ID"),
+              v2("ai_submission_assets.asset_type", "资产类型"),
+              v2("ai_submission_assets.content_text", "可读取文本内容"),
+              v2("ai_submission_assets.asset_url", "资产访问地址"),
+              v2("ai_submission_assets.available_status", "资产可用状态"),
+              v2("ai_materials.parent_material_id", "父素材ID"),
+              v2("ai_materials.internal_path", "压缩包内部路径")
+            ],
+            tables: [
+              ["V2：ai_submission_preprocess_jobs / ai_submission_assets / ai_materials", "优化版预处理任务、可评审资产和素材索引"]
+            ],
+            usage: [
+              "让不同文件类型统一进入 AI 评审链路。",
+              "保留素材读取失败、格式不符、文件过大、URL 不可访问等风险信息。",
+              "让证据包可以追溯到原始文件或压缩包内部路径。"
+            ]
+          }
+        ]
+      },
+      {
+        id: "evidence",
+        title: "证据获取",
+        subtitle: "Agent / Skill / Tool",
+        className: "ai",
+        versions: ["V2 优化版"],
+        nodes: [
+          {
+            id: "gate-evidence-agent",
+            title: "门槛项评审与证据获取 Agent",
+            desc: "V2版由 Agent 组织 Skill/Tool 构建证据包，门槛项不满足时直接输出不合格结果。",
+            versions: ["V2 优化版"],
+            type: ["generated", "db"],
+            data: [
+              "V2 优化版：Agent运行拆到 ai_agent_runs，事件过程写入 ai_review_job_events，Skill/Tool运行分别写入 ai_skill_runs 和 ai_tool_runs。",
+              "V2 的差异：门槛项评审结果、证据获取计划、Skill/Tool调用过程、错误类型、重试次数、token和成本都拆字段保存。"
+            ],
+            fields: [
+              v2("ai_agent_runs.run_id", "Agent运行ID"),
+              v2("ai_agent_runs.review_job_id", "AI评审任务ID"),
+              v2("ai_agent_runs.round_id", "评审轮次ID"),
+              v2("ai_agent_runs.criterion_id", "评价指标ID"),
+              v2("ai_agent_runs.agent_key", "Agent标识"),
+              v2("ai_agent_runs.input_payload", "Agent输入"),
+              v2("ai_agent_runs.output_payload", "Agent输出"),
+              v2("ai_agent_runs.status", "Agent状态"),
+              v2("ai_agent_runs.error_type", "Agent错误类型"),
+              v2("ai_agent_runs.error_message", "Agent错误信息"),
+              v2("ai_agent_runs.retry_count", "Agent重试次数"),
+              v2("ai_agent_runs.latency_ms", "Agent耗时毫秒"),
+              v2("ai_agent_runs.token_usage", "Token用量"),
+              v2("ai_review_job_events.event_type", "评审过程事件类型"),
+              v2("ai_review_job_events.event_payload", "评审过程事件内容"),
+              v2("ai_skill_runs.skill_key", "Skill标识"),
+              v2("ai_skill_runs.input_payload", "Skill输入"),
+              v2("ai_skill_runs.output_payload", "Skill输出"),
+              v2("ai_tool_runs.tool_key", "Tool标识"),
+              v2("ai_tool_runs.input_payload", "Tool输入"),
+              v2("ai_tool_runs.output_payload", "Tool输出"),
+              v2("ai_tool_runs.error_type", "Tool错误类型"),
+              v2("ai_tool_runs.cost_payload", "Tool成本信息")
+            ],
+            tables: [
+              ["V2：ai_agent_runs / ai_review_job_events / ai_skill_runs / ai_tool_runs / ai_evidence_bundles", "优化版Agent、事件、Skill、Tool和证据包拆分记录"]
+            ],
+            usage: [
+              "保留 Agent 证据获取与评审判断过程。",
+              "门槛项不满足时，直接进入不合格结果，避免无效评审。",
+              "门槛项满足时，形成可追溯证据包。"
+            ]
+          },
+          {
+            id: "skills-tools",
+            title: "Skill 调用 Tool 获取证据",
+            desc: "Skill 和 Tool 的定义、输入输出协议、运行日志均使用已有 AI 服务表。",
+            versions: ["V2 优化版"],
+            type: ["generated", "db"],
+            data: [
+              "V2 优化版：Skill定义、Tool定义、Skill运行、Tool运行全部独立落库。",
+              "V2 的差异：文件读取、压缩包解析、表格解析、音视频理解、URL访问、代码运行等 Tool 都可以单独记录输入、输出、错误和成本。"
+            ],
+            fields: [
+              v2("ai_skills.skill_key", "Skill标识"),
+              v2("ai_skills.skill_name", "Skill名称"),
+              v2("ai_skills.skill_type", "Skill类型"),
+              v2("ai_skills.supported_file_types", "支持文件类型"),
+              v2("ai_skills.input_schema", "Skill输入结构"),
+              v2("ai_skills.output_schema", "Skill输出结构"),
+              v2("ai_skills.callable_tool_keys", "可调用Tool列表"),
+              v2("ai_skills.failure_strategy", "失败处理策略"),
+              v2("ai_tools.tool_key", "Tool标识"),
+              v2("ai_tools.tool_name", "Tool名称"),
+              v2("ai_tools.tool_type", "Tool类型"),
+              v2("ai_tools.call_method", "调用方式"),
+              v2("ai_tools.input_schema", "Tool输入结构"),
+              v2("ai_tools.output_schema", "Tool输出结构"),
+              v2("ai_tools.timeout_ms", "超时时间"),
+              v2("ai_tools.retry_count", "重试次数"),
+              v2("ai_tool_runs.tool_run_id", "Tool运行ID"),
+              v2("ai_tool_runs.skill_run_id", "所属Skill运行ID"),
+              v2("ai_tool_runs.status", "Tool状态"),
+              v2("ai_tool_runs.elapsed_ms", "Tool耗时毫秒")
+            ],
+            tables: [
+              ["V2：ai_skills / ai_tools / ai_skill_runs / ai_tool_runs", "优化版Skill、Tool能力与运行记录"]
+            ],
+            usage: [
+              "把文件、URL、代码、表格、音视频等非结构化内容转成可评审证据。",
+              "精确记录哪个 Skill 调了哪个 Tool、输入输出是什么、是否失败。",
+              "为后续修复 HTML gzip、压缩包读取、URL 截图、代码运行等问题提供数据。"
+            ]
+          },
+          {
+            id: "evidence-bundle",
+            title: "结构化证据包入库",
+            desc: "证据包表保存材料引用、证据摘要、结构化内容、可引用证据和风险标记。",
+            versions: ["V2 优化版"],
+            type: ["generated", "db"],
+            data: [
+              "V2 的差异：证据包由门槛项评审与证据获取 Agent 统一组织，单题评审 Agent 只读取证据包，不再临时决定取证方式。",
+              "V2版证据包必须能追溯到原始素材、Skill运行和Tool运行。"
+            ],
+            fields: [
+              v2("ai_evidence_bundles.evidence_bundle_id", "证据包ID"),
+              v2("ai_evidence_bundles.review_job_id", "AI评审任务ID"),
+              v2("ai_evidence_bundles.round_no", "评审轮次"),
+              v2("ai_evidence_bundles.skill_key", "证据来源Skill"),
+              v2("ai_evidence_bundles.material_ids", "引用素材ID列表"),
+              v2("ai_evidence_bundles.evidence_summary", "证据摘要"),
+              v2("ai_evidence_bundles.structured_content", "结构化证据内容"),
+              v2("ai_evidence_bundles.reference_items", "可引用证据项"),
+              v2("ai_evidence_bundles.risk_flags", "证据风险标记"),
+              v2("ai_evidence_bundles.status", "证据包状态")
+            ],
+            tables: [
+              ["V2：ai_evidence_bundles / ai_materials / ai_skill_runs / ai_tool_runs", "优化版证据包、素材、Skill和Tool来源"]
+            ],
+            usage: [
+              "作为单题评审 Agent 的直接输入。",
+              "支持从评价依据追溯到原始素材和 Tool 运行记录。",
+              "为教师盲审后定位 AI 与教师差异提供证据基础。"
+            ]
+          }
+        ]
+      },
+      {
+        id: "ai-review",
+        title: "AI 独立评审",
+        subtitle: "单题与课程",
+        className: "ai",
+        nodes: [
+          {
+            id: "v1-flow-dispatch",
+            title: "读取评审流程并调度 Agent",
+            desc: "V1版学生提交后，系统直接读取该题目已生成的评审流程，并按流程选择对应 Agent 进行评审。",
+            versions: ["V1版"],
+            type: ["generated", "db"],
+            data: [
+              "V1版：学生提交作品后，后端按 question_bank_id + question_id 查询 nexai_training_bank_review_flow。",
+              "V1版：系统读取 flow_json 中的评审配置，确定本题需要调用哪些 Agent、各 Agent 对应的评价指标和权重。",
+              "V1版：Agent 调用过程写入 ai_agent_run_logs，Agent/指标级结果写入 nexai_course_ai_review_agent_result。"
+            ],
+            fields: [
+              v1("nexai_training_bank_review_flow.id", "评审流程记录ID"),
+              v1("nexai_training_bank_review_flow.question_bank_id", "题库ID"),
+              v1("nexai_training_bank_review_flow.question_id", "题目ID"),
+              v1("nexai_training_bank_review_flow.question_type", "题目类型"),
+              v1("nexai_training_bank_review_flow.flow_json", "题目评审流程JSON"),
+              v1("nexai_training_bank_review_flow.status", "流程状态"),
+              v1("ai_agent_run_logs.agent_key", "被调用Agent标识"),
+              v1("ai_agent_run_logs.agent_version_id", "Agent版本ID"),
+              v1("ai_agent_run_logs.input_payload", "Agent调用输入"),
+              v1("ai_agent_run_logs.output_payload", "Agent调用输出"),
+              v1("ai_agent_run_logs.status", "Agent调用状态"),
+              v1("ai_agent_run_logs.duration_ms", "Agent调用耗时")
+            ],
+            tables: [
+              ["V1：nexai_training_bank_review_flow", "V1版题目级评审流程"],
+              ["V1：ai_agent_run_logs", "V1版Agent调用记录"],
+              ["V1：nexai_course_ai_review_agent_result", "V1版Agent/指标级评审结果"]
+            ],
+            usage: [
+              "确保同一道题的不同学生提交使用同一套评审流程。",
+              "按评审流程选择对应 Agent，而不是重新生成流程。",
+              "将 Agent 调用输入、输出、状态和耗时沉淀到数据库。"
+            ]
+          },
+          {
+            id: "single-review",
+            title: "单题评审 Agent",
+            desc: "单题结果、Agent 明细和运行日志分别写入现有三类表。",
+            type: ["generated", "db"],
+            data: [
+              "V1版：单题结果写入 nexai_course_ai_review_task，Agent/指标明细写入 nexai_course_ai_review_agent_result。",
+              "V2 优化版：评审任务、轮次、文件/专业Agent结果、指标汇总、轮次汇总、专家总评全部拆表保存。",
+              "V2 的差异：三轮评审、追加轮、去掉争议轮、最终合议都可以通过结构化表追溯。"
+            ],
+            fields: [
+              v1("nexai_course_ai_review_task.id", "单题评审结果ID"),
+              v1("nexai_course_ai_review_task.review_id", "课程评审ID"),
+              v1("nexai_course_ai_review_task.question_id", "题目ID"),
+              v1("nexai_course_ai_review_task.question_title", "题目标题"),
+              v1("nexai_course_ai_review_task.question_type", "题目类型"),
+              v1("nexai_course_ai_review_task.result_level", "题目等级"),
+              v1("nexai_course_ai_review_task.score", "题目得分"),
+              v1("nexai_course_ai_review_task.result_json", "单题评审结果JSON"),
+              v1("nexai_course_ai_review_task.generation_input_json", "单题Agent输入"),
+              v1("nexai_course_ai_review_task.generation_output_json", "单题Agent输出"),
+              v1("nexai_course_ai_review_agent_result.agent_key", "Agent标识"),
+              v1("nexai_course_ai_review_agent_result.indicator_id", "评价指标ID"),
+              v1("nexai_course_ai_review_agent_result.indicator_name", "评价指标名称"),
+              v1("nexai_course_ai_review_agent_result.asset_types", "使用资产类型"),
+              v1("nexai_course_ai_review_agent_result.weight", "Agent权重"),
+              v1("nexai_course_ai_review_agent_result.score", "Agent得分"),
+              v1("nexai_course_ai_review_agent_result.result_level", "Agent评审等级"),
+              v1("nexai_course_ai_review_agent_result.input_json", "Agent明细输入"),
+              v1("nexai_course_ai_review_agent_result.output_json", "Agent明细输出"),
+              v2("ai_review_jobs.review_job_id", "AI评审任务ID"),
+              v2("ai_review_jobs.submission_id", "学生提交ID"),
+              v2("ai_review_jobs.review_flow_id", "评审流程ID"),
+              v2("ai_review_jobs.status", "评审任务状态"),
+              v2("ai_review_jobs.final_score", "最终得分"),
+              v2("ai_review_jobs.final_grade", "最终等级"),
+              v2("ai_review_rounds.round_id", "评审轮次ID"),
+              v2("ai_review_rounds.round_no", "轮次编号"),
+              v2("ai_file_agent_results.agent_key", "专业评审Agent标识"),
+              v2("ai_file_agent_results.agent_weight", "专业评审Agent权重"),
+              v2("ai_file_agent_results.agent_max_score", "Agent满分"),
+              v2("ai_file_agent_results.score", "Agent得分"),
+              v2("ai_file_agent_results.comment", "Agent评语"),
+              v2("ai_file_agent_results.strengths", "Agent识别优点"),
+              v2("ai_file_agent_results.problems", "Agent识别问题"),
+              v2("ai_file_agent_results.suggestions", "Agent修改建议"),
+              v2("ai_criterion_results.criterion_score", "指标汇总得分"),
+              v2("ai_criterion_results.criterion_comment", "指标汇总评语"),
+              v2("ai_round_results.round_score", "单轮总分"),
+              v2("ai_consensus_results.final_score", "专家总评最终得分"),
+              v2("ai_consensus_results.final_grade", "专家总评最终等级"),
+              v2("ai_consensus_results.excluded_round_no", "被剔除争议轮次"),
+              v2("ai_consensus_results.expert_comment", "专家总评语")
+            ],
+            tables: [
+              ["V1：nexai_course_ai_review_task / nexai_course_ai_review_agent_result", "V1版单题评审结果和Agent明细"],
+              ["V2：ai_review_jobs / ai_review_rounds / ai_file_agent_results / ai_criterion_results / ai_round_results / ai_consensus_results", "优化版任务、轮次、Agent、指标、轮次和专家总评结果"]
+            ],
+            usage: [
+              "生成学生可见的单题评价结果。",
+              "作为课程综合评价 Agent 的结构化输入。",
+              "作为教师盲审完成后的 AI 侧基线数据。"
+            ]
+          },
+          {
+            id: "course-review",
+            title: "课程评审 Agent",
+            desc: "课程/项目综合结果写入 nexai_course_ai_review，AI 独立服务可同步写入 ai_project_review_results。",
+            type: ["generated", "db"],
+            data: [
+              "V1版：课程综合结果保存到 nexai_course_ai_review。",
+              "V2 优化版：项目/课程综合评价保存到 ai_project_review_results。",
+              "V2 的差异：项目综合评价只读取每道题的结构化结果，保存总体评语、优点、问题、建议和各作业结果摘要。"
+            ],
+            fields: [
+              v1("nexai_course_ai_review.id", "课程综合评审ID"),
+              v1("nexai_course_ai_review.user_id", "学生用户ID"),
+              v1("nexai_course_ai_review.course_id", "课程ID"),
+              v1("nexai_course_ai_review.project_id", "项目ID"),
+              v1("nexai_course_ai_review.review_status", "课程综合评审状态"),
+              v1("nexai_course_ai_review.result_level", "课程综合等级"),
+              v1("nexai_course_ai_review.score", "课程综合得分"),
+              v1("nexai_course_ai_review.description", "课程结果描述"),
+              v1("nexai_course_ai_review.result_json", "课程最终结果JSON"),
+              v1("nexai_course_ai_review.task_results_json", "课程各题结果快照"),
+              v1("nexai_course_ai_review.generation_input_json", "课程评审Agent输入"),
+              v1("nexai_course_ai_review.generation_output_json", "课程评审Agent输出"),
+              v1("nexai_course_ai_review.input_hash", "输入快照哈希"),
+              v2("ai_project_review_results.project_result_id", "项目评价结果ID"),
+              v2("ai_project_review_results.workshop_id", "工作坊ID"),
+              v2("ai_project_review_results.project_id", "项目ID"),
+              v2("ai_project_review_results.student_id", "学生ID"),
+              v2("ai_project_review_results.project_score", "项目综合得分"),
+              v2("ai_project_review_results.project_grade", "项目等级"),
+              v2("ai_project_review_results.overall_comment", "项目总体评语"),
+              v2("ai_project_review_results.strengths", "项目优点"),
+              v2("ai_project_review_results.problems", "项目问题"),
+              v2("ai_project_review_results.suggestions", "项目修改建议"),
+              v2("ai_project_review_results.assignment_results", "各作业评价摘要"),
+              v2("ai_project_review_results.agent_run_id", "课程评审Agent运行ID")
+            ],
+            tables: [
+              ["V1：nexai_course_ai_review / nexai_course_ai_review_task", "V1版课程综合评价和单题结果快照"],
+              ["V2：ai_project_review_results / ai_review_jobs", "优化版项目综合评价和被汇总的题目评审任务"]
+            ],
+            usage: [
+              "展示学生最终评审报告。",
+              "沉淀项目级学习表现。",
+              "作为教师抽查样本池的数据来源。"
+            ]
+          }
+        ]
+      },
+      {
+        id: "teacher",
+        title: "教师盲审",
+        subtitle: "抽样、独立查看、反馈",
+        className: "teacher",
+        nodes: [
+          {
+            id: "sampling-task",
+            title: "管理员创建抽查任务",
+            desc: "教师抽查任务和样本使用本地库真实表 teacher_sampling_tasks、teacher_sampling_samples 保存。",
+            type: ["blind", "collected", "db"],
+            data: [
+              "V1版和V2版一致：抽查任务保存到 teacher_sampling_tasks，抽查样本保存到 teacher_sampling_samples。",
+              "教师盲审页面只读取题目和学生作业；sample 表中的 AI 关联字段只给后台优化使用，不展示给教师。"
+            ],
+            fields: [
+              common("teacher_sampling_tasks.task_id", "抽查任务ID"),
+              common("teacher_sampling_tasks.workshop_id", "工作坊ID"),
+              common("teacher_sampling_tasks.created_by", "创建管理员ID"),
+              common("teacher_sampling_tasks.sample_count", "抽查数量"),
+              common("teacher_sampling_tasks.sample_scope", "抽查范围"),
+              common("teacher_sampling_tasks.assigned_teacher_ids", "指派教师列表"),
+              common("teacher_sampling_tasks.sampling_rule", "抽样规则"),
+              common("teacher_sampling_tasks.status", "抽查任务状态"),
+              common("teacher_sampling_tasks.sampled_at", "抽样时间"),
+              common("teacher_sampling_tasks.completed_at", "完成时间"),
+              common("teacher_sampling_samples.sample_id", "抽查样本ID"),
+              common("teacher_sampling_samples.task_id", "抽查任务ID"),
+              common("teacher_sampling_samples.workshop_id", "工作坊ID"),
+              common("teacher_sampling_samples.submission_id", "学生提交ID"),
+              common("teacher_sampling_samples.review_job_id", "AI评审任务ID"),
+              common("teacher_sampling_samples.student_id", "学生ID"),
+              common("teacher_sampling_samples.assigned_teacher_id", "指派教师ID"),
+              common("teacher_sampling_samples.ai_final_score", "AI最终得分（后台优化用，不给教师看）"),
+              common("teacher_sampling_samples.ai_final_grade", "AI最终等级（后台优化用，不给教师看）"),
+              common("teacher_sampling_samples.status", "样本状态")
+            ],
+            tables: [
+              ["teacher_sampling_tasks / teacher_sampling_samples", "V1版和V2版一致的教师抽查任务和抽查样本"]
+            ],
+            usage: [
+              "形成教师盲审任务池。",
+              "教师端只读取题目和学生作业，不读取 AI 评语、AI 分数和 AI 明细。",
+              "后台保留 AI 关联字段，供后续优化流程使用。"
+            ]
+          },
+          {
+            id: "blind-review",
+            title: "教师独立评审作品",
+            desc: "教师只看到题目和学生作业，独立给出评价维度、评价指标和评审结果。",
+            type: ["blind", "collected", "db"],
+            data: [
+              "教师端展示内容：题目标题、题目内容、学生提交文本、学生上传文件或作品 URL。",
+              "教师输出内容：评价维度、评价指标、每项评分、整体分数、等级、评语和修改建议。",
+              "教师评审过程不展示 AI 分数、AI 评语、AI 证据包和 Agent 调用结果。",
+              "教师盲审结果结构在 V1/V2 中保持一致；不得使用 teacher_review_feedback 这类评价 AI 质量的字段来代替教师独立评审结果。"
+            ],
+            fields: [
+              common("teacher_blind_review_results.review_result_id", "教师盲审结果ID"),
+              common("teacher_blind_review_results.task_id", "抽查任务ID"),
+              common("teacher_blind_review_results.sample_id", "抽查样本ID"),
+              common("teacher_blind_review_results.teacher_id", "教师ID"),
+              common("teacher_blind_review_results.question_id", "题目ID"),
+              common("teacher_blind_review_results.submission_id", "学生提交ID"),
+              common("teacher_blind_review_results.teacher_score", "教师整体评分"),
+              common("teacher_blind_review_results.teacher_level", "教师评审等级"),
+              common("teacher_blind_review_results.teacher_comment", "教师整体评语"),
+              common("teacher_blind_review_results.teacher_suggestions_json", "教师修改建议"),
+              common("teacher_blind_review_metric_results.metric_result_id", "教师指标评分ID"),
+              common("teacher_blind_review_metric_results.review_result_id", "教师盲审结果ID"),
+              common("teacher_blind_review_metric_results.dimension_name", "教师评价维度"),
+              common("teacher_blind_review_metric_results.indicator_name", "教师评价指标名称"),
+              common("teacher_blind_review_metric_results.indicator_content", "教师评价指标内容"),
+              common("teacher_blind_review_metric_results.score", "教师指标得分"),
+              common("teacher_blind_review_metric_results.max_score", "指标满分"),
+              common("teacher_blind_review_metric_results.teacher_evidence", "教师评价依据"),
+              common("teacher_blind_review_metric_results.teacher_comment", "教师指标评语")
+            ],
+            tables: [
+              ["教师盲审结果结构：teacher_blind_review_results", "教师独立评审学生作业的整体结果"],
+              ["教师盲审指标结构：teacher_blind_review_metric_results", "教师独立给出的维度/指标级评分明细"]
+            ],
+            usage: [
+              "沉淀教师独立判断，不被 AI 结果影响。",
+              "形成后续 Prompt 优化的人审样本。",
+              "支撑按评价维度、评价指标定位 AI 评审偏差。"
+            ]
+          }
+        ]
+      },
+      {
+        id: "version",
+        title: "优化沉淀",
+        subtitle: "样本、版本、质量",
+        className: "optimize",
+        nodes: [
+          {
+            id: "optimization-analysis",
+            title: "教师样本驱动优化",
+            desc: "教师盲审输出进入优化批次，形成候选 Prompt、模型建议和管理员审核动作。",
+            type: ["generated", "blind", "db"],
+            data: [
+              "教师盲审完成后，系统读取教师给出的评价维度、评价指标和评审结果。",
+              "V1版：当前主要依赖 Agent 版本表和运行记录做人工排查，缺少完整优化批次表。",
+              "V2 优化版：优化批次、候选Prompt、管理员审核动作分别写入 ai_agent_optimization_batches、ai_agent_optimization_candidates、ai_agent_optimization_review_actions。",
+              "教师盲审数据只作为优化样本，不改变学生当前成绩。"
+            ],
+            fields: [
+              v1("ai_agent_versions.agent_version_id", "Agent版本ID"),
+              v1("ai_agent_versions.agent_key", "Agent标识"),
+              v1("ai_agent_versions.prompt", "Prompt内容"),
+              v1("ai_agent_run_logs.status", "Agent调用状态"),
+              v1("ai_agent_run_logs.error_message", "Agent错误信息"),
+              common("teacher_blind_review_results.teacher_score", "教师整体评分"),
+              common("teacher_blind_review_results.teacher_level", "教师评审等级"),
+              common("teacher_blind_review_metric_results.dimension_name", "教师评价维度"),
+              common("teacher_blind_review_metric_results.indicator_name", "教师评价指标"),
+              common("teacher_blind_review_metric_results.score", "教师指标得分"),
+              v2("ai_agent_optimization_batches.batch_id", "优化批次ID"),
+              v2("ai_agent_optimization_batches.workshop_id", "工作坊ID"),
+              v2("ai_agent_optimization_batches.sampling_task_id", "来源抽查任务ID"),
+              v2("ai_agent_optimization_batches.optimizer_run_id", "优化Agent运行ID"),
+              v2("ai_agent_optimization_batches.summary", "优化总结"),
+              v2("ai_agent_optimization_batches.global_findings", "全局问题发现"),
+              v2("ai_agent_optimization_batches.validation_plan", "验证方案"),
+              v2("ai_agent_optimization_candidates.candidate_id", "候选版本ID"),
+              v2("ai_agent_optimization_candidates.agent_key", "Agent标识"),
+              v2("ai_agent_optimization_candidates.problem_summary", "问题总结"),
+              v2("ai_agent_optimization_candidates.prompt_change_summary", "Prompt修改说明"),
+              v2("ai_agent_optimization_candidates.candidate_prompt", "候选Prompt"),
+              v2("ai_agent_optimization_candidates.model_suggestion", "模型建议"),
+              v2("ai_agent_optimization_candidates.decision", "管理员决策"),
+              v2("ai_agent_optimization_candidates.created_version_id", "生成的Agent版本ID"),
+              v2("ai_agent_optimization_review_actions.review_action", "管理员审核动作"),
+              v2("ai_agent_optimization_review_actions.actions_json", "审核动作明细"),
+              v2("ai_agent_optimization_review_actions.publish_config", "发布配置")
+            ],
+            tables: [
+              ["V1：ai_agent_versions / ai_agent_run_logs", "V1版Agent版本和运行记录"],
+              ["教师盲审结果结构：teacher_blind_review_results / teacher_blind_review_metric_results", "教师独立盲审样本"],
+              ["V2：ai_agent_optimization_batches / ai_agent_optimization_candidates / ai_agent_optimization_review_actions", "优化版Prompt优化批次、候选版本和管理员审核动作"]
+            ],
+            usage: [
+              "把教师盲审结果沉淀为优化样本。",
+              "将教师评价维度、评价指标和评审结论用于 Prompt 优化。",
+              "管理员确认后才形成新的 Agent 版本，不影响学生当前成绩。"
+            ]
+          },
+          {
+            id: "agent-version",
+            title: "Agent / Skill / Tool 版本",
+            desc: "V1版只展示 Agent 版本；V2版展示优化版 Agent、Skill、Tool、模型配置版本。",
+            type: ["generated", "db"],
+            data: [
+              "V1版：只使用 ai_agents、ai_agent_versions 管理 Agent 与 Prompt 版本。",
+              "V2 优化版：Agent、Prompt版本、模型配置、Skill、Tool 全部独立保存并可被接口调用。",
+              "V2 的差异：其他系统只需要通过接口传入题目、指标、作业材料，即可复用同一套 Agent/Skill/Tool 配置。"
+            ],
+            fields: [
+              v1("ai_agents.agent_key", "Agent标识"),
+              v1("ai_agents.agent_name", "Agent名称"),
+              v1("ai_agents.agent_type", "Agent类型"),
+              v1("ai_agent_versions.agent_version_id", "Agent版本ID"),
+              v1("ai_agent_versions.prompt", "Prompt内容"),
+              v1("ai_agent_versions.input_schema", "输入结构"),
+              v1("ai_agent_versions.output_schema", "输出结构"),
+              v2("ai_agents.agent_key", "Agent标识"),
+              v2("ai_agents.agent_name", "Agent名称"),
+              v2("ai_agents.agent_type", "Agent类型"),
+              v2("ai_agents.base_input_schema", "Agent基础输入结构"),
+              v2("ai_agents.base_output_schema", "Agent基础输出结构"),
+              v2("ai_agent_versions.agent_version_id", "Agent版本ID"),
+              v2("ai_agent_versions.prompt", "Prompt内容"),
+              v2("ai_agent_versions.model_config_id", "模型配置ID"),
+              v2("ai_agent_versions.input_schema", "版本输入结构"),
+              v2("ai_agent_versions.output_schema", "版本输出结构"),
+              v2("ai_model_configs.provider", "模型供应商"),
+              v2("ai_model_configs.model_name", "模型名称"),
+              v2("ai_model_configs.base_url", "模型Base URL"),
+              v2("ai_model_configs.api_key_ref", "密钥引用"),
+              v2("ai_model_configs.temperature", "温度参数"),
+              v2("ai_model_configs.max_tokens", "最大输出Token"),
+              v2("ai_tools.tool_key", "Tool标识"),
+              v2("ai_tools.version", "Tool版本")
+            ],
+            tables: [
+              ["V1：ai_agents / ai_agent_versions", "V1版Agent和Prompt基础配置"],
+              ["V2：ai_agents / ai_agent_versions / ai_model_configs / ai_skills / ai_tools", "优化版Agent、模型、Skill、Tool配置"]
+            ],
+            usage: [
+              "新评审任务使用 active 状态版本。",
+              "历史评审保留版本引用，支持复盘。",
+              "优化批次通过 created_from_batch_id 追溯来源。"
+            ]
+          },
+          {
+            id: "metrics",
+            title: "长期质量数据沉淀",
+            desc: "当前库没有独立的长期质量指标汇总表，统计数据可由运行日志、AI 评审结果、教师盲审结果和优化批次实时计算或后续新增汇总表。",
+            type: ["generated", "db"],
+            data: [
+              "V1版：主要从 ai_agent_run_logs、nexai_course_ai_review* 统计 Agent 调用稳定性和评审结果。",
+              "V2 优化版：从 ai_agent_runs、ai_skill_runs、ai_tool_runs、ai_review_jobs、ai_consensus_results、ai_external_api_call_logs 统计完整链路质量。",
+              "教师盲审基线只来自教师独立评审学生作业的结果，不来自教师对AI评语的打分。"
+            ],
+            fields: [
+              v1("ai_agent_run_logs.status", "Agent调用状态"),
+              v1("ai_agent_run_logs.error_message", "Agent错误信息"),
+              v1("ai_agent_run_logs.duration_ms", "Agent耗时"),
+              v1("nexai_course_ai_review.score", "课程综合得分"),
+              v1("nexai_course_ai_review.result_level", "课程综合等级"),
+              v1("nexai_course_ai_review_task.score", "单题得分"),
+              v2("ai_agent_runs.status", "Agent状态"),
+              v2("ai_agent_runs.error_type", "Agent错误类型"),
+              v2("ai_agent_runs.latency_ms", "Agent耗时"),
+              v2("ai_agent_runs.token_usage", "Token用量"),
+              v2("ai_skill_runs.status", "Skill状态"),
+              v2("ai_skill_runs.error_type", "Skill错误类型"),
+              v2("ai_tool_runs.status", "Tool状态"),
+              v2("ai_tool_runs.error_type", "Tool错误类型"),
+              v2("ai_tool_runs.cost_payload", "Tool成本信息"),
+              v2("ai_external_api_call_logs.endpoint", "外部接口地址"),
+              v2("ai_external_api_call_logs.status", "外部接口调用状态"),
+              common("teacher_blind_review_results.teacher_score", "教师整体评分"),
+              common("teacher_blind_review_metric_results.score", "教师指标得分")
+            ],
+            tables: [
+              ["V1：ai_agent_run_logs / nexai_course_ai_review*", "V1版Agent调用质量和评审结果"],
+              ["V2：ai_agent_runs / ai_skill_runs / ai_tool_runs / ai_external_api_call_logs", "优化版Agent、Skill、Tool、外部接口调用质量"],
+              ["教师盲审结果结构：teacher_blind_review_results / teacher_blind_review_metric_results", "教师独立盲审质量基线"]
+            ],
+            usage: [
+              "统计 AI 评审调用成功率、失败原因和耗时。",
+              "V2版统计证据获取链路中 Skill/Tool 的稳定性。",
+              "分析教师独立盲审样本是否推动 Agent 版本质量提升。"
+            ]
+          }
+        ]
+      }
+    ];
+
+    const dbRows = [
+      ["课程", "V1版", "nexaitest：nexai_course / nexai_course_chapters / nexai_course_sections", "课程ID(id)、课程标题(title)、课程介绍(summary)、章节ID(id)、章节课程ID(course_id)、小节ID(id)、小节课程ID(course_id)、小节章节ID(chapter_id)、绑定题库ID(traine_id)", "course_id 关联课程、章节和小节；section.traine_id 关联题库", "确定学生学习路径、题库入口和课程综合评审归属"],
+      ["课程", "V2 优化版", "icanx_ai_v2：workshops / workshop_course_sections / workshop_course_videos", "工作坊ID(workshop_id)、工作坊名称(workshop_name)、课程名称(course_name)、课程介绍(course_intro)、课程小节ID(section_id)、小节标题(section_title)、学习目标(learning_objectives)、视频ID(video_id)、视频地址(oss_url)", "workshop_id 贯穿课程、小节、视频、作业、评价指标和评审流程", "作为独立 AI 评审项目的课程与作业容器"],
+      ["题目", "V1版", "nexaitest：nexai_training_bank / nexai_training_bank_question / nexai_training_bank_evaluation_indicator / nexai_training_bank_review_flow", "题库ID(id)、题库名称(name)、题目ID(id)、题目类型(type)、题目内容(label)、题目内容快照(question_content_json)、Agent评审指标(agent_indicator_json)、最终评价指标(final_indicator_json)、流程JSON(flow_json)、流程生成Agent输入(generation_input_json)、流程生成Agent输出(generation_output_json)", "training_bank.id = question.traine_id；question_bank_id + question_id 关联指标和流程", "保存V1版题目、评价指标和题目级Agent评审流程"],
+      ["题目", "V2 优化版", "icanx_ai_v2：workshop_training_tasks / ai_rubric_drafts / ai_rubrics / ai_rubric_items / ai_review_flows / ai_review_flow_criteria / ai_review_flow_agents / ai_review_flow_skill_requirements", "作业ID(task_id)、作业内容(task_detail)、提交要求(submission_requirements)、评价指标草稿ID(rubric_draft_id)、正式评价指标ID(rubric_id)、指标ID(criterion_id)、指标名称(criterion_name)、优秀标准(excellent_standard)、合格标准(qualified_standard)、不合格标准(unqualified_standard)、评审流程ID(review_flow_id)、Agent标识(agent_key)、Agent权重(weight)、Skill标识(skill_key)、取证目标(process_goal)", "task_id 关联作业；rubric_id 关联正式指标；review_flow_id 关联指标、Agent和Skill计划", "保存优化版题目指标、门槛项、Agent调度和Skill取证计划"],
+      ["AI评审", "V1版", "nexaitest：nexai_course_ai_review / nexai_course_ai_review_task / nexai_course_ai_review_agent_result / ai_agent_run_logs", "课程综合评审ID(id)、课程综合得分(score)、课程综合等级(result_level)、课程最终结果(result_json)、单题结果ID(task.id)、单题得分(task.score)、单题等级(task.result_level)、单题结果(task.result_json)、Agent标识(agent_key)、指标ID(indicator_id)、指标名称(indicator_name)、Agent得分(agent_result.score)、Agent明细输入(input_json)、Agent明细输出(output_json)、Agent调用输入(input_payload)、Agent调用输出(output_payload)、Agent状态(status)、Agent错误信息(error_message)、Agent耗时(duration_ms)", "review_id 关联课程总评、单题结果和Agent明细；agent_key 关联被调用的评审Agent", "保存V1版AI评审结果、Agent明细和Agent调用记录"],
+      ["AI评审", "V2 优化版", "icanx_ai_v2：ai_review_jobs / ai_review_rounds / ai_agent_runs / ai_file_agent_results / ai_criterion_results / ai_round_results / ai_consensus_results / ai_project_review_results / ai_skill_runs / ai_tool_runs / ai_evidence_bundles / ai_review_job_events", "评审任务ID(review_job_id)、提交ID(submission_id)、评审流程ID(review_flow_id)、最终得分(final_score)、最终等级(final_grade)、轮次ID(round_id)、轮次编号(round_no)、Agent运行ID(run_id)、Agent输入(input_payload)、Agent输出(output_payload)、Agent错误类型(error_type)、重试次数(retry_count)、Token用量(token_usage)、专业Agent得分(score)、指标汇总得分(criterion_score)、轮次总分(round_score)、专家总评得分(final_score)、剔除争议轮次(excluded_round_no)、项目综合得分(project_score)、Skill输入(input_payload)、Skill输出(output_payload)、Tool输入(input_payload)、Tool输出(output_payload)、Tool成本(cost_payload)、证据摘要(evidence_summary)、过程事件类型(event_type)、过程事件内容(event_payload)", "review_job_id 贯穿任务、轮次、Agent、Skill、Tool、证据和总评；submission_id 关联学生作业", "保存优化版AI评审全链路，可追溯门槛项、证据、Agent、Skill、Tool、三轮评审和课程总评"],
+      ["学生作业", "V1版", "nexaitest：nexai_user_sections_question / infra_file / ai_materials", "用户题目提交ID(id)、用户ID(user_id)、课程ID(course_id)、小节ID(section_id)、题库ID(traine_Id)、题目ID(question_id)、学生作答(answer)、提交值(value)、文件ID(file.id)、文件名(name)、文件URL(url)、文件类型(type)、素材ID(material_id)、素材来源(material_source)、素材类型(material_type)、解析状态(parse_status)、风险标记(risk_flags)", "user_id + course_id + section_id + question_id 定位学生题目提交；文件URL进入素材索引", "保存V1版学生作业、上传文件和AI素材索引"],
+      ["学生作业", "V2 优化版", "icanx_ai_v2：workshop_submissions / workshop_submission_files / ai_submission_preprocess_jobs / ai_submission_assets / ai_materials", "提交ID(submission_id)、工作坊ID(workshop_id)、作业ID(task_id)、学生ID(student_id)、提交标题(submission_title)、文本内容(markdown_content)、提交格式(submitted_format)、文件ID(file_id)、文件名(file_name)、文件类型(file_type)、OSS地址(oss_url)、内容哈希(content_hash)、预处理任务ID(preprocess_job_id)、资产ID(asset_id)、资产类型(asset_type)、可读取文本(content_text)、素材ID(material_id)、压缩包内部路径(internal_path)、解析状态(parse_status)", "submission_id 关联提交、文件、预处理任务、资产和素材；preprocess_job_id 关联资产解析过程", "保存优化版跨系统作业提交、文件资产、预处理结果和证据素材"],
+      ["教师评审", "V1版", "teacher_sampling_tasks / teacher_sampling_samples；教师盲审结果结构 teacher_blind_review_results / teacher_blind_review_metric_results", "抽查任务ID(task_id)、工作坊ID(workshop_id)、抽查数量(sample_count)、抽查范围(sample_scope)、指派教师(assigned_teacher_ids)、抽样规则(sampling_rule)、抽查样本ID(sample_id)、学生提交ID(submission_id)、教师ID(teacher_id)、教师整体评分(teacher_score)、教师评审等级(teacher_level)、教师整体评语(teacher_comment)、教师修改建议(teacher_suggestions_json)、教师评价维度(dimension_name)、教师评价指标名称(indicator_name)、教师评价指标内容(indicator_content)、教师指标得分(score)、教师评价依据(teacher_evidence)", "sample_id 关联教师盲审结果；submission_id 关联学生作业；review_job_id 仅后台优化比对使用，不展示给教师", "保存教师独立盲审学生作业的数据，后续用于优化AI评审，不影响学生当前成绩"],
+      ["教师评审", "V2 优化版", "icanx_ai_v2：teacher_sampling_tasks / teacher_sampling_samples；教师盲审结果结构 teacher_blind_review_results / teacher_blind_review_metric_results", "抽查任务ID(task_id)、工作坊ID(workshop_id)、抽查数量(sample_count)、抽查范围(sample_scope)、指派教师(assigned_teacher_ids)、抽样规则(sampling_rule)、抽查样本ID(sample_id)、学生提交ID(submission_id)、教师ID(teacher_id)、教师整体评分(teacher_score)、教师评审等级(teacher_level)、教师整体评语(teacher_comment)、教师修改建议(teacher_suggestions_json)、教师评价维度(dimension_name)、教师评价指标名称(indicator_name)、教师评价指标内容(indicator_content)、教师指标得分(score)、教师评价依据(teacher_evidence)", "sample_id 关联教师盲审结果；submission_id 关联学生作业；review_job_id 仅后台优化比对使用，不展示给教师", "保存教师独立盲审学生作业的数据，后续用于优化AI评审，不影响学生当前成绩"]
+    ];
+
+    const fieldLabels = {
+      "nexai_training_bank.id": "题库ID",
+      "nexai_training_bank.name": "题库名称",
+      "nexai_training_bank.title": "题库标题",
+      "nexai_training_bank.question_count": "题目数量",
+      "nexai_training_bank.category": "题库分类",
+      "nexai_training_bank.type": "资源类型",
+      "nexai_training_bank.fields_json": "旧版题目字段JSON",
+      "nexai_training_bank_question.id": "题目ID",
+      "nexai_training_bank_question.traine_id": "所属题库ID",
+      "nexai_training_bank_question.type": "题目类型",
+      "nexai_training_bank_question.label": "题干",
+      "nexai_training_bank_question.value": "题目值",
+      "nexai_training_bank_question.required": "是否必答",
+      "nexai_training_bank_question.answer": "参考答案",
+      "nexai_training_bank_question.sort_order": "题目排序",
+      "nexai_training_bank_evaluation_indicator.id": "评价指标记录ID",
+      "nexai_training_bank_evaluation_indicator.question_bank_id": "题库ID",
+      "nexai_training_bank_evaluation_indicator.question_id": "题目ID",
+      "nexai_training_bank_evaluation_indicator.question_index": "题目下标",
+      "nexai_training_bank_evaluation_indicator.question_title": "题目标题",
+      "nexai_training_bank_evaluation_indicator.question_type": "题目类型",
+      "nexai_training_bank_evaluation_indicator.question_content_json": "题目内容快照",
+      "nexai_training_bank_evaluation_indicator.indicator_json": "评价指标JSON",
+      "nexai_training_bank_evaluation_indicator.agent_indicator_json": "Agent规范化评价指标",
+      "nexai_training_bank_evaluation_indicator.final_indicator_json": "管理员最终评价指标",
+      "nexai_training_bank_evaluation_indicator.generation_input_json": "指标生成Agent输入",
+      "nexai_training_bank_evaluation_indicator.generation_output_json": "指标生成Agent输出",
+      "nexai_training_bank_evaluation_indicator.agent_version_id": "Agent版本ID",
+      "nexai_training_bank_evaluation_indicator.status": "指标状态",
+      "nexai_training_bank_evaluation_indicator.final_revision_id": "最终版本记录ID",
+      "nexai_training_bank_evaluation_indicator.is_edited": "是否被管理员修改",
+      "nexai_training_bank_evaluation_indicator.edit_diff_json": "管理员修改差异",
+      "nexai_training_bank_evaluation_indicator.updater": "更新人",
+      "nexai_training_bank_evaluation_indicator.update_time": "更新时间",
+      "nexai_training_bank_evaluation_indicator_revision.revision_type": "版本类型",
+      "nexai_training_bank_evaluation_indicator_revision.source_type": "版本来源",
+      "nexai_training_bank_evaluation_indicator_revision.indicator_json": "本次版本评价指标",
+      "nexai_training_bank_evaluation_indicator_revision.base_agent_revision_id": "基于的Agent版本记录",
+      "nexai_training_bank_review_flow.id": "评审流程记录ID",
+      "nexai_training_bank_review_flow.question_bank_id": "题库ID",
+      "nexai_training_bank_review_flow.question_id": "题目ID",
+      "nexai_training_bank_review_flow.question_title": "题目标题",
+      "nexai_training_bank_review_flow.question_type": "题目类型",
+      "nexai_training_bank_review_flow.flow_json": "评审流程JSON",
+      "nexai_training_bank_review_flow.generation_input_json": "流程生成Agent输入",
+      "nexai_training_bank_review_flow.generation_output_json": "流程生成Agent输出",
+      "nexai_training_bank_review_flow.agent_version_id": "流程生成Agent版本ID",
+      "nexai_training_bank_review_flow.status": "流程状态",
+      "ai_review_flow_skill_requirements.review_flow_id": "评审流程ID",
+      "ai_review_flow_skill_requirements.criterion_id": "评价指标ID",
+      "ai_review_flow_skill_requirements.skill_key": "Skill标识",
+      "ai_review_flow_skill_requirements.material_types": "关注材料类型",
+      "ai_review_flow_skill_requirements.process_goal": "取证目标",
+      "ai_review_flow_skill_requirements.required": "是否必需",
+      "ai_review_flow_skill_requirements.options": "执行参数",
+      "ai_review_flow_skill_requirements.sort_order": "执行顺序",
+      "nexai_user_sections_question.id": "用户题目提交ID",
+      "nexai_user_sections_question.course_id": "课程ID",
+      "nexai_user_sections_question.section_id": "小节ID",
+      "nexai_user_sections_question.traine_Id": "题库ID",
+      "nexai_user_sections_question.question_id": "题目ID",
+      "nexai_user_sections_question.user_id": "用户ID",
+      "nexai_user_sections_question.type": "题目类型",
+      "nexai_user_sections_question.label": "题干",
+      "nexai_user_sections_question.answer": "学生作答",
+      "nexai_user_sections_question.value": "提交值",
+      "infra_file.id": "文件ID",
+      "infra_file.name": "文件名",
+      "infra_file.path": "文件路径",
+      "infra_file.url": "文件访问URL",
+      "infra_file.type": "文件类型",
+      "infra_file.size": "文件大小",
+      "ai_materials.material_id": "素材ID",
+      "ai_materials.submission_id": "学生提交ID",
+      "ai_materials.review_job_id": "AI评审任务ID",
+      "ai_materials.task_id": "作业/题目ID",
+      "ai_materials.workshop_id": "工作坊ID",
+      "ai_materials.material_source": "素材来源",
+      "ai_materials.original_name": "原始文件名",
+      "ai_materials.storage_url": "素材存储地址",
+      "ai_materials.text_content": "文本内容",
+      "ai_materials.mime_type": "MIME类型",
+      "ai_materials.file_extension": "文件扩展名",
+      "ai_materials.material_type": "素材类型",
+      "ai_materials.file_size_bytes": "文件大小",
+      "ai_materials.parent_material_id": "父素材ID",
+      "ai_materials.internal_path": "压缩包内部路径",
+      "ai_materials.parse_status": "解析状态",
+      "ai_materials.parse_summary": "解析摘要",
+      "ai_materials.risk_flags": "素材风险标记",
+      "ai_materials.metadata": "素材元信息",
+      "ai_agent_run_logs.agent_key": "Agent标识",
+      "ai_agent_run_logs.agent_version_id": "Agent版本ID",
+      "ai_agent_run_logs.model_config_id": "模型配置ID",
+      "ai_agent_run_logs.input_payload": "Agent输入",
+      "ai_agent_run_logs.output_payload": "Agent输出",
+      "ai_agent_run_logs.status": "调用状态",
+      "ai_agent_run_logs.error_message": "错误信息",
+      "ai_agent_run_logs.duration_ms": "耗时毫秒",
+      "ai_skill_runs.review_job_id": "AI评审任务ID",
+      "ai_skill_runs.submission_id": "学生提交ID",
+      "ai_skill_runs.criterion_id": "评价指标ID",
+      "ai_skill_runs.agent_run_id": "触发Agent调用ID",
+      "ai_skill_runs.skill_key": "Skill标识",
+      "ai_skill_runs.skill_version": "Skill版本",
+      "ai_skill_runs.input_payload": "Skill输入",
+      "ai_skill_runs.output_payload": "Skill输出",
+      "ai_skill_runs.evidence_bundle_id": "证据包ID",
+      "ai_skill_runs.status": "Skill执行状态",
+      "ai_skill_runs.error_type": "Skill错误类型",
+      "ai_skill_runs.error_message": "Skill错误信息",
+      "ai_skill_runs.elapsed_ms": "Skill耗时",
+      "ai_skills.skill_key": "Skill标识",
+      "ai_skills.skill_name": "Skill名称",
+      "ai_skills.skill_type": "Skill类型",
+      "ai_skills.supported_file_types": "支持文件类型",
+      "ai_skills.input_schema": "Skill输入结构",
+      "ai_skills.output_schema": "Skill输出结构",
+      "ai_skills.callable_tool_keys": "可调用Tool列表",
+      "ai_skills.failure_strategy": "失败处理策略",
+      "ai_tools.tool_key": "Tool标识",
+      "ai_tools.tool_name": "Tool名称",
+      "ai_tools.tool_type": "Tool类型",
+      "ai_tools.call_method": "调用方式",
+      "ai_tools.input_schema": "Tool输入结构",
+      "ai_tools.output_schema": "Tool输出结构",
+      "ai_tools.timeout_ms": "超时时间",
+      "ai_tools.retry_count": "重试次数",
+      "ai_tool_runs.tool_run_id": "Tool调用记录ID",
+      "ai_tool_runs.skill_run_id": "触发Skill调用ID",
+      "ai_tool_runs.input_payload": "Tool输入",
+      "ai_tool_runs.output_payload": "Tool输出",
+      "ai_tool_runs.status": "Tool执行状态",
+      "ai_tool_runs.error_type": "Tool错误类型",
+      "ai_tool_runs.error_message": "Tool错误信息",
+      "ai_tool_runs.elapsed_ms": "Tool耗时",
+      "ai_tool_runs.cost_payload": "成本信息",
+      "ai_evidence_bundles.evidence_bundle_id": "证据包ID",
+      "ai_evidence_bundles.review_job_id": "AI评审任务ID",
+      "ai_evidence_bundles.submission_id": "学生提交ID",
+      "ai_evidence_bundles.criterion_id": "评价指标ID",
+      "ai_evidence_bundles.round_no": "评审轮次",
+      "ai_evidence_bundles.skill_key": "证据来源Skill",
+      "ai_evidence_bundles.material_ids": "引用素材ID列表",
+      "ai_evidence_bundles.evidence_summary": "证据摘要",
+      "ai_evidence_bundles.structured_content": "结构化证据内容",
+      "ai_evidence_bundles.reference_items": "可引用证据项",
+      "ai_evidence_bundles.risk_flags": "证据风险标记",
+      "ai_evidence_bundles.confidence": "证据可信度",
+      "ai_evidence_bundles.status": "证据包状态",
+      "nexai_course_ai_review_task.id": "单题评审结果ID",
+      "nexai_course_ai_review_task.review_id": "课程评审ID",
+      "nexai_course_ai_review_task.user_id": "用户ID",
+      "nexai_course_ai_review_task.course_id": "课程ID",
+      "nexai_course_ai_review_task.section_id": "小节ID",
+      "nexai_course_ai_review_task.question_bank_id": "题库ID",
+      "nexai_course_ai_review_task.question_id": "题目ID",
+      "nexai_course_ai_review_task.question_title": "题目标题",
+      "nexai_course_ai_review_task.question_type": "题目类型",
+      "nexai_course_ai_review_task.result_level": "题目评审等级",
+      "nexai_course_ai_review_task.score": "题目得分",
+      "nexai_course_ai_review_task.result_json": "单题评审结果JSON",
+      "nexai_course_ai_review_task.generation_input_json": "单题Agent输入",
+      "nexai_course_ai_review_task.generation_output_json": "单题Agent输出",
+      "nexai_course_ai_review_task.agent_version_id": "单题Agent版本ID",
+      "nexai_course_ai_review_task.model_config_id": "模型配置ID",
+      "nexai_course_ai_review_task.status": "单题评审状态",
+      "nexai_course_ai_review_agent_result.agent_key": "Agent标识",
+      "nexai_course_ai_review_agent_result.indicator_id": "评价指标ID",
+      "nexai_course_ai_review_agent_result.indicator_name": "评价指标名称",
+      "nexai_course_ai_review_agent_result.asset_types": "使用资产类型",
+      "nexai_course_ai_review_agent_result.weight": "指标权重",
+      "nexai_course_ai_review_agent_result.score": "Agent得分",
+      "nexai_course_ai_review_agent_result.result_level": "Agent评审等级",
+      "nexai_course_ai_review_agent_result.input_json": "Agent输入JSON",
+      "nexai_course_ai_review_agent_result.output_json": "Agent输出JSON",
+      "nexai_course_ai_review.id": "课程评审ID",
+      "nexai_course_ai_review.user_id": "用户ID",
+      "nexai_course_ai_review.course_id": "课程ID",
+      "nexai_course_ai_review.project_id": "项目ID",
+      "nexai_course_ai_review.trigger_section_id": "触发小节ID",
+      "nexai_course_ai_review.attempt_no": "评审提交次数",
+      "nexai_course_ai_review.review_status": "综合评审状态",
+      "nexai_course_ai_review.result_level": "综合评审等级",
+      "nexai_course_ai_review.final_result": "是否最终结果",
+      "nexai_course_ai_review.score": "综合得分",
+      "nexai_course_ai_review.description": "结果描述",
+      "nexai_course_ai_review.result_json": "前端展示结果JSON",
+      "nexai_course_ai_review.task_results_json": "各题结果快照",
+      "nexai_course_ai_review.generation_input_json": "课程评审Agent输入",
+      "nexai_course_ai_review.generation_output_json": "课程评审Agent输出",
+      "nexai_course_ai_review.input_hash": "输入快照哈希",
+      "ai_project_review_results.project_result_id": "项目评价结果ID",
+      "ai_project_review_results.project_score": "项目综合得分",
+      "ai_project_review_results.project_grade": "项目等级",
+      "ai_project_review_results.overall_comment": "总体评语",
+      "ai_project_review_results.strengths": "项目优点",
+      "ai_project_review_results.problems": "项目问题",
+      "ai_project_review_results.suggestions": "修改建议",
+      "ai_project_review_results.assignment_results": "各作业评价摘要",
+      "teacher_sampling_tasks.task_id": "抽查任务ID",
+      "teacher_sampling_tasks.workshop_id": "工作坊ID",
+      "teacher_sampling_tasks.created_by": "创建管理员ID",
+      "teacher_sampling_tasks.sample_count": "抽查数量",
+      "teacher_sampling_tasks.sample_scope": "抽查范围",
+      "teacher_sampling_tasks.assigned_teacher_ids": "指派教师列表",
+      "teacher_sampling_tasks.sampling_rule": "抽样规则",
+      "teacher_sampling_tasks.status": "抽查任务状态",
+      "teacher_sampling_tasks.sampled_at": "抽样时间",
+      "teacher_sampling_tasks.completed_at": "完成时间",
+      "teacher_sampling_samples.sample_id": "抽查样本ID",
+      "teacher_sampling_samples.task_id": "抽查任务ID",
+      "teacher_sampling_samples.workshop_id": "工作坊ID",
+      "teacher_sampling_samples.submission_id": "学生提交ID",
+      "teacher_sampling_samples.review_job_id": "AI评审任务ID",
+      "teacher_sampling_samples.student_id": "学生ID",
+      "teacher_sampling_samples.assigned_teacher_id": "指派教师ID",
+      "teacher_sampling_samples.ai_final_score": "AI最终得分",
+      "teacher_sampling_samples.ai_final_grade": "AI最终等级",
+      "teacher_sampling_samples.status": "样本状态",
+      "teacher_blind_review_results.review_result_id": "教师盲审结果ID",
+      "teacher_blind_review_results.task_id": "抽查任务ID",
+      "teacher_blind_review_results.sample_id": "抽查样本ID",
+      "teacher_blind_review_results.teacher_id": "教师ID",
+      "teacher_blind_review_results.question_id": "题目ID",
+      "teacher_blind_review_results.submission_id": "学生提交ID",
+      "teacher_blind_review_results.teacher_score": "教师评分",
+      "teacher_blind_review_results.teacher_level": "教师评审等级",
+      "teacher_blind_review_results.teacher_comment": "教师评语",
+      "teacher_blind_review_results.teacher_suggestions_json": "教师修改建议",
+      "teacher_blind_review_metric_results.metric_result_id": "教师指标评分ID",
+      "teacher_blind_review_metric_results.review_result_id": "教师盲审结果ID",
+      "teacher_blind_review_metric_results.dimension_name": "评价维度名称",
+      "teacher_blind_review_metric_results.indicator_name": "评价指标名称",
+      "teacher_blind_review_metric_results.indicator_content": "评价指标内容",
+      "teacher_blind_review_metric_results.score": "指标得分",
+      "teacher_blind_review_metric_results.max_score": "指标满分",
+      "teacher_blind_review_metric_results.teacher_evidence": "教师评价依据",
+      "teacher_blind_review_metric_results.teacher_comment": "教师指标评语",
+      "ai_agent_optimization_batches.batch_id": "优化批次ID",
+      "ai_agent_optimization_batches.workshop_id": "工作坊ID",
+      "ai_agent_optimization_batches.sampling_task_id": "来源抽查任务ID",
+      "ai_agent_optimization_batches.optimizer_run_id": "优化Agent运行ID",
+      "ai_agent_optimization_batches.status": "优化批次状态",
+      "ai_agent_optimization_batches.summary": "优化总结",
+      "ai_agent_optimization_batches.global_findings": "全局问题发现",
+      "ai_agent_optimization_batches.validation_plan": "验证方案",
+      "ai_agent_optimization_candidates.candidate_id": "候选版本ID",
+      "ai_agent_optimization_candidates.batch_id": "优化批次ID",
+      "ai_agent_optimization_candidates.agent_key": "Agent标识",
+      "ai_agent_optimization_candidates.current_version_id": "当前正式版本ID",
+      "ai_agent_optimization_candidates.candidate_version": "候选版本号",
+      "ai_agent_optimization_candidates.problem_summary": "问题总结",
+      "ai_agent_optimization_candidates.prompt_change_summary": "Prompt修改说明",
+      "ai_agent_optimization_candidates.candidate_prompt": "候选Prompt",
+      "ai_agent_optimization_candidates.model_suggestion": "模型选择建议",
+      "ai_agent_optimization_candidates.expected_improvement": "预期改进",
+      "ai_agent_optimization_candidates.decision": "管理员决策",
+      "ai_agent_optimization_candidates.created_version_id": "创建后的版本ID",
+      "ai_agent_optimization_review_actions.action_id": "审核动作ID",
+      "ai_agent_optimization_review_actions.review_action": "审核动作",
+      "ai_agent_optimization_review_actions.actions_json": "候选处理明细",
+      "ai_agent_optimization_review_actions.publish_config": "发布配置",
+      "ai_agents.agent_key": "Agent标识",
+      "ai_agents.agent_name": "Agent名称",
+      "ai_agents.agent_type": "Agent类型",
+      "ai_agents.supported_file_types": "支持文件类型",
+      "ai_agents.base_input_schema": "基础输入结构",
+      "ai_agents.base_output_schema": "基础输出结构",
+      "ai_agent_versions.agent_version_id": "Agent版本ID",
+      "ai_agent_versions.agent_key": "Agent标识",
+      "ai_agent_versions.version": "版本号",
+      "ai_agent_versions.prompt": "Prompt内容",
+      "ai_agent_versions.model_config_id": "模型配置ID",
+      "ai_agent_versions.input_schema": "版本输入结构",
+      "ai_agent_versions.output_schema": "版本输出结构",
+      "ai_agent_versions.status": "版本状态",
+      "ai_agent_versions.created_from_batch_id": "来源优化批次ID",
+      "ai_agent_versions.activated_at": "启用时间",
+      "ai_model_configs.model_config_id": "模型配置ID",
+      "ai_model_configs.provider": "模型供应商",
+      "ai_model_configs.model_name": "模型名称",
+      "ai_model_configs.base_url": "模型Base URL",
+      "ai_model_configs.api_key_ref": "密钥引用",
+      "ai_model_configs.temperature": "温度参数",
+      "ai_model_configs.max_tokens": "最大输出Token",
+      "ai_model_configs.timeout_ms": "模型调用超时"
+    };
+
+    const flowMap = document.getElementById("flow-map");
+    const detailType = document.getElementById("detail-type");
+    const detailTitle = document.getElementById("detail-title");
+    const detailSummary = document.getElementById("detail-summary");
+    const detailData = document.getElementById("detail-data");
+    const detailFields = document.getElementById("detail-fields");
+    const detailTables = document.getElementById("detail-tables");
+    const detailUsage = document.getElementById("detail-usage");
+    const dbSummary = document.getElementById("db-summary");
+    let activeVersion = "V2 优化版";
+    let activeFilter = "all";
+    let selectedNodeId = "gate-evidence-agent";
+
+    const allNodes = [];
+    lanes.forEach((lane) => {
+      const laneEl = document.createElement("section");
+      laneEl.className = `lane ${lane.className || ""}`;
+      laneEl.dataset.versions = (lane.versions || ["V1版", "V2 优化版"]).join(",");
+      laneEl.innerHTML = `<div class="lane-title"><span>${lane.title}</span><small>${lane.subtitle}</small></div>`;
+      lane.nodes.forEach((node) => {
+        allNodes.push(node);
+        const btn = document.createElement("button");
+        btn.className = "step";
+        btn.type = "button";
+        btn.dataset.id = node.id;
+        btn.dataset.types = node.type.join(",");
+        btn.dataset.versions = (node.versions || ["V1版", "V2 优化版"]).join(",");
+        btn.innerHTML = `
+          <span class="tag-row">${node.type.map((item) => `<span class="tag ${item}">${labelOf(item)}</span>`).join("")}</span>
+          <span class="step-title">${node.title}</span>
+          <span class="step-desc">${node.desc}</span>
+        `;
+        btn.addEventListener("click", () => selectNode(node.id));
+        laneEl.appendChild(btn);
+      });
+      flowMap.appendChild(laneEl);
+    });
+
+    renderDbSummary();
+
+    function labelOf(type) {
+      return {
+        collected: "采集",
+        generated: "生成",
+        blind: "盲审",
+        db: "入库"
+      }[type] || type;
+    }
+
+    function typeText(types) {
+      const map = {
+        collected: "采集数据",
+        generated: "AI 生成数据",
+        blind: "教师盲审数据",
+        db: "数据库沉淀"
+      };
+      return types.map((item) => map[item] || item).join(" / ");
+    }
+
+    function fieldLabel(field) {
+      if (typeof field === "object" && field !== null) {
+        return `${field.name}（${field.key}）`;
+      }
+      const normalized = field.trim();
+      const cn = fieldLabels[normalized];
+      if (cn) {
+        return `${cn}（${normalized}）`;
+      }
+      const columnName = normalized.includes(".") ? normalized.split(".").pop() : normalized;
+      const fallback = fieldLabels[columnName];
+      return fallback ? `${fallback}（${normalized}）` : normalized;
+    }
+
+    function renderList(target, items) {
+      target.innerHTML = "";
+      items.forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        target.appendChild(li);
+      });
+    }
+
+    function itemMatchesVersion(item) {
+      if (typeof item === "object" && item !== null) {
+        return item.version === activeVersion || item.version === "教师盲审通用";
+      }
+      if (typeof item !== "string") return true;
+      if (item.startsWith("V1 ")) return activeVersion === "V1版";
+      if (item.startsWith("V2 ")) return activeVersion === "V2 优化版";
+      if (item.startsWith("V1：")) return activeVersion === "V1版";
+      if (item.startsWith("V2：")) return activeVersion === "V2 优化版";
+      return true;
+    }
+
+    function tableMatchesVersion([table]) {
+      if (table.startsWith("V1：")) return activeVersion === "V1版";
+      if (table.startsWith("V2：")) return activeVersion === "V2 优化版";
+      return true;
+    }
+
+    function versionText(text) {
+      if (!text) return "";
+      return text
+        .replace(/^V1版：/, "")
+        .replace(/^V2 优化版：/, "")
+        .replace(/^V1：/, "")
+        .replace(/^V2：/, "");
+    }
+
+    function renderDbSummary() {
+      dbSummary.innerHTML = "";
+      dbRows
+        .filter((row) => row[1] === activeVersion)
+        .forEach((row) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${row[0]}</td>
+            <td>${row[1]}</td>
+            <td><code>${row[2]}</code></td>
+            <td>${row[3]}</td>
+            <td>${row[4]}</td>
+            <td>${row[5]}</td>
+          `;
+          dbSummary.appendChild(tr);
+        });
+    }
+
+    function applyTypeFilter() {
+      document.querySelectorAll(".step").forEach((step) => {
+        const types = step.dataset.types.split(",");
+        const versions = step.dataset.versions.split(",");
+        const hiddenByVersion = !versions.includes(activeVersion);
+        step.classList.toggle("hidden-by-filter", activeFilter !== "all" && !types.includes(activeFilter));
+        step.classList.toggle("hidden-by-version", hiddenByVersion);
+      });
+      document.querySelectorAll(".lane").forEach((lane) => {
+        const versions = lane.dataset.versions.split(",");
+        const hiddenByLaneVersion = !versions.includes(activeVersion);
+        const hasVisibleStep = Array.from(lane.querySelectorAll(".step")).some((step) => {
+          const stepVersions = step.dataset.versions.split(",");
+          return stepVersions.includes(activeVersion);
+        });
+        lane.classList.toggle("hidden-by-version", hiddenByLaneVersion || !hasVisibleStep);
+      });
+    }
+
+    function nodeSupportsActiveVersion(id) {
+      const button = document.querySelector(`.step[data-id="${id}"]`);
+      if (!button) return false;
+      return button.dataset.versions.split(",").includes(activeVersion);
+    }
+
+    function firstVisibleNodeId() {
+      const button = Array.from(document.querySelectorAll(".step")).find((step) => step.dataset.versions.split(",").includes(activeVersion));
+      return button ? button.dataset.id : selectedNodeId;
+    }
+
+    function selectNode(id) {
+      const node = allNodes.find((item) => item.id === id);
+      if (!node) return;
+      selectedNodeId = id;
+      document.querySelectorAll(".step").forEach((item) => item.classList.toggle("active", item.dataset.id === id));
+      detailType.textContent = `${activeVersion} · ${typeText(node.type)}`;
+      detailTitle.textContent = node.title;
+      detailSummary.textContent = node.desc;
+      renderList(detailData, node.data.filter(itemMatchesVersion).map(versionText));
+      detailFields.innerHTML = "";
+      node.fields.filter(itemMatchesVersion).forEach((field) => {
+        const span = document.createElement("span");
+        span.className = "field";
+        const fieldKey = typeof field === "object" && field !== null ? field.key : field;
+        if (fieldKey.startsWith("teacher_blind_review_")) {
+          span.classList.add("suggested");
+        }
+        span.textContent = fieldLabel(field);
+        span.title = fieldKey;
+        detailFields.appendChild(span);
+      });
+      detailTables.innerHTML = "";
+      node.tables.filter(tableMatchesVersion).forEach(([table, desc]) => {
+        const div = document.createElement("div");
+        div.className = "db-item";
+        div.innerHTML = `<code>${versionText(table)}</code>${desc}`;
+        detailTables.appendChild(div);
+      });
+      renderList(detailUsage, node.usage);
+    }
+
+    document.querySelectorAll(".version-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        activeVersion = btn.dataset.version;
+        document.querySelectorAll(".version-btn").forEach((item) => item.classList.toggle("active", item === btn));
+        renderDbSummary();
+        if (!nodeSupportsActiveVersion(selectedNodeId)) {
+          selectedNodeId = activeVersion === "V1版" ? "v1-flow-dispatch" : firstVisibleNodeId();
+        }
+        applyTypeFilter();
+        selectNode(selectedNodeId);
+      });
+    });
+
+    document.querySelectorAll(".filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        activeFilter = btn.dataset.filter;
+        document.querySelectorAll(".filter-btn").forEach((item) => item.classList.toggle("active", item === btn));
+        applyTypeFilter();
+      });
+    });
+
+    applyTypeFilter();
+    selectNode(selectedNodeId);
+  </script>
+</body>
+</html>
