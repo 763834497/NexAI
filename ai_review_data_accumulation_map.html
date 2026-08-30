@@ -52,7 +52,7 @@
     .page {
       max-width: 1880px;
       margin: 0 auto;
-      padding: 28px 34px;
+      padding: 78px 34px 28px;
     }
 
     .hero {
@@ -615,7 +615,7 @@
 
     @media (max-width: 760px) {
       .page {
-        padding: 18px;
+        padding: 72px 18px 18px;
       }
 
       .hero {
@@ -635,9 +635,48 @@
         min-width: 0;
       }
     }
+
+    .prototype-back-button {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 50;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 40px;
+      padding: 0 14px;
+      border: 1px solid rgba(217, 225, 238, 0.95);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.94);
+      color: #152033;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 12px 28px rgba(21, 32, 51, 0.12);
+      backdrop-filter: blur(10px);
+      transition: transform 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+    }
+
+    .prototype-back-button:hover {
+      transform: translateY(-1px);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .prototype-back-button.is-disabled {
+      color: #94a3b8;
+      border-color: #e2e8f0;
+      cursor: default;
+      transform: none;
+    }
   </style>
 </head>
 <body>
+  <button class="prototype-back-button" data-prototype-back type="button" onclick="goPrototypeBack()" aria-label="返回上一页">
+    <span aria-hidden="true">←</span>
+    <span class="prototype-back-text">返回</span>
+  </button>
   <main class="page">
     <section class="hero" aria-labelledby="page-title">
       <div>
@@ -740,6 +779,39 @@
   </main>
 
   <script>
+    function goPrototypeBack() {
+      const previousUrl = sessionStorage.getItem("prototypePreviousUrl");
+      if (previousUrl && previousUrl !== window.location.href) {
+        sessionStorage.removeItem("prototypePreviousUrl");
+        window.location.href = previousUrl;
+        return;
+      }
+
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+
+      const button = document.querySelector("[data-prototype-back]");
+      const label = button ? button.querySelector(".prototype-back-text") : null;
+      if (button && label) {
+        button.classList.add("is-disabled");
+        label.textContent = "暂无上一页";
+        window.setTimeout(() => {
+          button.classList.remove("is-disabled");
+          label.textContent = "返回";
+        }, 1600);
+      }
+    }
+
+    document.addEventListener("click", (event) => {
+      const link = event.target.closest("a[href]");
+      if (!link) return;
+      const href = link.getAttribute("href") || "";
+      if (!href || href.startsWith("#") || href.startsWith("javascript:") || link.target === "_blank") return;
+      sessionStorage.setItem("prototypePreviousUrl", window.location.href);
+    });
+
     const field = (version, key, name) => ({ version, key, name });
     const v1 = (key, name) => field("V1版", key, name);
     const v2 = (key, name) => field("V2 优化版", key, name);

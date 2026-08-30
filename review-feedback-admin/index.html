@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>奈势AI - 管理员控制台</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+    .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    /* 自定义滑块样式 */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: #3b82f6;
+      cursor: pointer;
+      margin-top: -8px;
+      box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: #e2e8f0;
+      border-radius: 4px;
+    }
+    input[type=range]:focus {
+      outline: none;
+    }
+  </style>
+</head>
+<body class="bg-[#f0f2f5] text-slate-800 font-sans h-screen overflow-hidden selection:bg-blue-200">
+  <div id="root" class="h-full"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const Icons = {
+      Home: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+      Users: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>,
+      ClipboardList: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>,
+      Settings: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>,
+      Eye: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>,
+      ArrowLeft: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>,
+      Calendar: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>,
+      Clock: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>,
+      CheckCircle: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>,
+      AlertCircle: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>,
+      X: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>,
+    };
+
+    const MOCK_TEACHERS = [
+      { id: 'T01', name: '王建国', department: '前端教研组' },
+      { id: 'T02', name: '李思思', department: '产品教研组' },
+      { id: 'T03', name: '张伟', department: 'AI教研组' },
+      { id: 'T04', name: '刘婷婷', department: '运营教研组' },
+    ];
+
+    const INITIAL_COURSES = [
+      { 
+        id: 'C01', 
+        name: 'AI 产品经理核心工作流拆解', 
+        enrolled: 1250, 
+        completed: 1100, 
+        endTime: '2026-08-30 23:59',
+        status: 'not_set', // not_set, in_progress, finished
+        reviewConfig: null,
+        reviewProgress: null,
+        teacherStatus: null
+      },
+      { 
+        id: 'C02', 
+        name: '点燃计划 | 第16期前端架构实战', 
+        enrolled: 800, 
+        completed: 750, 
+        endTime: '2026-08-15 23:59',
+        status: 'in_progress',
+        reviewConfig: {
+          reviewCount: 375,
+          startTime: '2026-08-16',
+          endTime: '2026-08-25',
+          teachers: ['T01', 'T03']
+        },
+        reviewProgress: {
+          total: 375,
+          completed: 280,
+          pending: 95
+        },
+        teacherStatus: {
+          pending: [{ id: 'T03', name: '张伟' }],
+          completed: [
+            { id: 'T01', name: '王建国', finishTime: '2026-08-19 14:30:00', taskCount: 180 }
+          ]
+        }
+      },
+      { 
+        id: 'C03', 
+        name: 'AIGC 商业插画实战训练营', 
+        enrolled: 2100, 
+        completed: 2000, 
+        endTime: '2026-07-30 23:59',
+        status: 'finished',
+        reviewConfig: {
+          reviewCount: 2000,
+          startTime: '2026-08-01',
+          endTime: '2026-08-10',
+          teachers: ['T02', 'T04']
+        },
+        reviewProgress: {
+          total: 2000,
+          completed: 2000,
+          pending: 0
+        },
+        teacherStatus: {
+          pending: [],
+          completed: [
+            { id: 'T02', name: '李思思', finishTime: '2026-08-05 11:20:00', taskCount: 1000 },
+            { id: 'T04', name: '刘婷婷', finishTime: '2026-08-09 16:45:00', taskCount: 1000 }
+          ]
+        }
+      }
+    ];
+
+    const AdminLayout = ({ currentMenu, setCurrentMenu, children }) => {
+      return (
+        <div className="flex h-screen w-screen overflow-hidden bg-[#f0f2f5]">
+          {/* 左侧深色菜单栏 */}
+          <div className="w-[220px] bg-[#0f172a] flex flex-col shrink-0 z-20 text-slate-300 shadow-xl">
+            <div className="h-16 flex items-center px-6 shrink-0 bg-[#0b1120]">
+              <div className="w-8 h-8 rounded bg-gradient-to-tr from-blue-500 to-indigo-600 mr-3 flex items-center justify-center text-white font-extrabold text-lg shadow-lg">A</div>
+              <span className="text-white font-bold text-base tracking-wide">后台管理系统</span>
+            </div>
+            
+            <div className="flex-1 py-4 flex flex-col gap-1 text-[14px]">
+              <div className="px-6 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">系统概览</div>
+              <div onClick={() => setCurrentMenu('dashboard')} className={`flex items-center px-6 py-3 cursor-pointer transition-all ${currentMenu === 'dashboard' ? 'bg-blue-600/10 text-blue-400 border-r-4 border-blue-500' : 'hover:bg-slate-800 hover:text-white border-r-4 border-transparent'}`}>
+                <Icons.Home /> <span className="ml-3 font-medium">首页大盘</span>
+              </div>
+              
+              <div className="px-6 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider mt-4 mb-2">教学管理</div>
+              <div onClick={() => setCurrentMenu('teacher_review')} className={`flex items-center px-6 py-3 cursor-pointer transition-all ${currentMenu === 'teacher_review' ? 'bg-blue-600/10 text-blue-400 border-r-4 border-blue-500' : 'hover:bg-slate-800 hover:text-white border-r-4 border-transparent'}`}>
+                <Icons.ClipboardList /> <span className="ml-3 font-medium">教师评审管理</span>
+              </div>
+
+              <div onClick={() => setCurrentMenu('student_feedback')} className={`flex items-center px-6 py-3 cursor-pointer transition-all ${currentMenu === 'student_feedback' ? 'bg-blue-600/10 text-blue-400 border-r-4 border-blue-500' : 'hover:bg-slate-800 hover:text-white border-r-4 border-transparent'}`}>
+                <Icons.AlertCircle /> <span className="ml-3 font-medium">学生反馈管理</span>
+              </div>
+              
+              <div className="flex items-center px-6 py-3 cursor-pointer transition-all hover:bg-slate-800 hover:text-white border-r-4 border-transparent text-slate-400 opacity-60">
+                <Icons.Users /> <span className="ml-3 font-medium">学员管理</span>
+              </div>
+            </div>
+            
+            {/* 底部用户信息 */}
+            <div className="p-4 border-t border-slate-800 bg-[#0b1120]">
+              <div className="flex items-center gap-3">
+                 <img src="https://ui-avatars.com/api/?name=Admin&background=3b82f6&color=fff" className="w-9 h-9 rounded-full border-2 border-slate-700" alt="avatar" />
+                 <div>
+                   <div className="text-sm font-bold text-white">超级管理员</div>
+                   <div className="text-xs text-slate-500">admin@naishi.ai</div>
+                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 右侧工作区 */}
+          <div className="flex-1 flex flex-col min-w-0 relative">
+            <header className="h-16 bg-white border-b border-slate-200 flex justify-between items-center px-8 shrink-0 z-10 shadow-sm">
+              <div className="flex items-center text-sm">
+                 <span className="font-bold text-slate-800 text-lg">
+                   {currentMenu === 'teacher_review' ? '教师评审管理' : currentMenu === 'student_feedback' ? '学生反馈管理' : '首页概览'}
+                 </span>
+              </div>
+              <div className="flex items-center gap-4">
+                 <button className="relative text-slate-400 hover:text-slate-600">
+                    <Icons.AlertCircle className="w-5 h-5" />
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                 </button>
+              </div>
+            </header>
+            
+            <main className="flex-1 relative overflow-hidden bg-[#f0f2f5]">
+              {children}
+            </main>
+          </div>
+        </div>
+      );
+    };
+
+    const ProgressBar = ({ current, total, colorClass = "bg-blue-500" }) => {
+      const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+      return (
+        <div className="w-full">
+          <div className="flex justify-between text-[12px] mb-1.5">
+            <span className="text-slate-500">{current} / {total}</span>
+            <span className="font-bold text-slate-700">{percentage}%</span>
+          </div>
+          <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden border border-slate-200">
+            <div className={`h-1.5 rounded-full ${colorClass} transition-all duration-500`} style={{ width: `${percentage}%` }}></div>
+          </div>
+        </div>
+      );
+    };
+
+    const CourseListView = ({ courses, onSetReview, onViewProgress }) => {
+      return (
+        <div className="absolute inset-0 overflow-y-auto p-8 animate-fade-in">
+          <div className="mb-6 flex justify-between items-end">
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-800">课程评审任务大盘</h2>
+              <p className="text-sm text-slate-500 mt-1">管理并监控所有课程的教师评审配置及进度。</p>
+            </div>
+            <div className="flex gap-3">
+               <input type="text" placeholder="搜索课程名称..." className="px-4 py-2 border border-slate-300 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" />
+               <button className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">过滤状态</button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <table className="w-full text-left text-[14px]">
+              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-4 font-bold w-[25%]">课程名称</th>
+                  <th className="px-6 py-4 font-bold w-[20%]">学习完成情况 (完成/报名)</th>
+                  <th className="px-6 py-4 font-bold w-[15%]">课程结束时间</th>
+                  <th className="px-6 py-4 font-bold w-[15%]">当前评审状态</th>
+                  <th className="px-6 py-4 font-bold text-right w-[25%]">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {courses.map(course => (
+                  <tr key={course.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-5">
+                      <div className="font-bold text-slate-800 text-[15px] mb-1">{course.name}</div>
+                      <div className="text-xs text-slate-400 font-mono">ID: {course.id}</div>
+                    </td>
+                    <td className="px-6 py-5 pr-10">
+                      <ProgressBar current={course.completed} total={course.enrolled} colorClass="bg-indigo-500" />
+                    </td>
+                    <td className="px-6 py-5 text-slate-600 font-mono text-[13px]">{course.endTime}</td>
+                    <td className="px-6 py-5">
+                      {course.status === 'not_set' && <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>未设置</span>}
+                      {course.status === 'in_progress' && <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5 animate-pulse"></span>评审中</span>}
+                      {course.status === 'finished' && <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>已完成</span>}
+                    </td>
+                    <td className="px-6 py-5 text-right space-x-3">
+                      <button onClick={() => onSetReview(course)} className="inline-flex items-center justify-center px-4 py-2 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg text-sm font-bold transition-colors shadow-sm">
+                        <Icons.Settings className="w-4 h-4 mr-1.5" /> 设置评审
+                      </button>
+                      
+                      {course.status !== 'not_set' ? (
+                        <button onClick={() => onViewProgress(course)} className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-bold transition-all shadow-sm shadow-blue-600/20 transform group-hover:-translate-y-0.5">
+                          <Icons.Eye className="w-4 h-4 mr-1.5" /> 评审详情
+                        </button>
+                      ) : (
+                        <button disabled className="inline-flex items-center justify-center px-4 py-2 bg-slate-100 text-slate-400 rounded-lg text-sm font-bold cursor-not-allowed border border-slate-200">
+                           <Icons.Eye className="w-4 h-4 mr-1.5" /> 暂无详情
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    };
+
+    const SetReviewModal = ({ course, onClose, onSave }) => {
+      const [excellentCount, setExcellentCount] = useState(course.reviewConfig?.excellentCount ?? 20);
+      const [qualifiedCount, setQualifiedCount] = useState(course.reviewConfig?.qualifiedCount ?? 30);
+      const [startTime, setStartTime] = useState(course.reviewConfig?.startTime || '2026-08-20');
+      const [endTime, setEndTime] = useState(course.reviewConfig?.endTime || '2026-08-30');
+      const [selectedTeachers, setSelectedTeachers] = useState(course.reviewConfig?.teachers || []);
+      
+      const toggleTeacher = (tId) => {
+        if(selectedTeachers.includes(tId)) setSelectedTeachers(selectedTeachers.filter(id => id !== tId));
+        else setSelectedTeachers([...selectedTeachers, tId]);
+      }
+
+      const maxPerTeacher = Math.max(1, Math.floor(course.completed / Math.max(1, selectedTeachers.length)));
+      const updateReviewCount = (value, setter) => {
+        const nextValue = Number(value);
+        if (Number.isNaN(nextValue)) return;
+        setter(Math.min(maxPerTeacher, Math.max(0, Math.round(nextValue))));
+      };
+
+      const reviewCountPerTeacher = excellentCount + qualifiedCount;
+      const totalReviewCount = reviewCountPerTeacher * selectedTeachers.length;
+      const canSave = reviewCountPerTeacher >= 1 && totalReviewCount <= course.completed && selectedTeachers.length > 0;
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <h3 className="font-extrabold text-slate-800 text-lg flex items-center"><Icons.Settings className="mr-2 text-blue-600" /> 设置评审规则</h3>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><Icons.X /></button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[70vh]">
+              <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 mb-8">
+                <div className="text-xs font-bold text-blue-600 uppercase tracking-wide mb-1">当前配置课程</div>
+                <div className="font-bold text-slate-800 text-base">{course.name}</div>
+                <div className="text-sm text-slate-500 mt-2 flex gap-6">
+                  <span>学习完成人数：<strong className="text-slate-700">{course.completed}</strong> 人</span>
+                  <span>课程结束时间：<strong className="text-slate-700">{course.endTime}</strong></span>
+                </div>
+              </div>
+
+              <div className="space-y-8">
+                {/* 评审数量 */}
+                <div>
+                  <label className="block mb-3">
+                    <span className="font-bold text-slate-800">1. 设定评审学生数量 <span className="text-red-500">*</span></span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
+                      <div className="text-sm font-bold text-emerald-700 mb-3">优秀人数</div>
+                      <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500">
+                        <button type="button" onClick={() => updateReviewCount(excellentCount - 1, setExcellentCount)} className="w-10 h-10 text-xl text-slate-500 hover:bg-slate-50 border-r border-slate-200">−</button>
+                        <input type="number" min="0" max={maxPerTeacher} value={excellentCount} onChange={(e) => updateReviewCount(e.target.value, setExcellentCount)} className="w-full h-10 text-center text-lg font-bold text-emerald-600 outline-none [appearance:textfield]" />
+                        <button type="button" onClick={() => updateReviewCount(excellentCount + 1, setExcellentCount)} className="w-10 h-10 text-xl text-slate-500 hover:bg-slate-50 border-l border-slate-200">＋</button>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-2 text-center">人 / 每位教师</div>
+                    </div>
+                    <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+                      <div className="text-sm font-bold text-blue-700 mb-3">合格人数</div>
+                      <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
+                        <button type="button" onClick={() => updateReviewCount(qualifiedCount - 1, setQualifiedCount)} className="w-10 h-10 text-xl text-slate-500 hover:bg-slate-50 border-r border-slate-200">−</button>
+                        <input type="number" min="0" max={maxPerTeacher} value={qualifiedCount} onChange={(e) => updateReviewCount(e.target.value, setQualifiedCount)} className="w-full h-10 text-center text-lg font-bold text-blue-600 outline-none [appearance:textfield]" />
+                        <button type="button" onClick={() => updateReviewCount(qualifiedCount + 1, setQualifiedCount)} className="w-10 h-10 text-xl text-slate-500 hover:bg-slate-50 border-l border-slate-200">＋</button>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-2 text-center">人 / 每位教师</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-slate-500">
+                    每位教师评审 {reviewCountPerTeacher} 人（优秀 {excellentCount} 人、合格 {qualifiedCount} 人）；已选择 {selectedTeachers.length} 位教师，预计生成 <strong className="text-indigo-600 text-sm px-1">{totalReviewCount}</strong> 份评审任务
+                  </div>
+                </div>
+
+                {/* 评审时间 */}
+                <div>
+                  <label className="block font-bold text-slate-800 mb-3">2. 设定教师评审周期 <span className="text-red-500">*</span></label>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 relative">
+                      <Icons.Calendar className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                      <input type="date" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+                    </div>
+                    <span className="text-slate-400 font-medium">至</span>
+                    <div className="flex-1 relative">
+                      <Icons.Calendar className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                      <input type="date" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 指派教师 */}
+                <div>
+                  <label className="block font-bold text-slate-800 mb-3">3. 指派评审教研团队 <span className="text-red-500">*</span></label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {MOCK_TEACHERS.map(teacher => {
+                      const isSelected = selectedTeachers.includes(teacher.id);
+                      return (
+                        <div key={teacher.id} onClick={() => toggleTeacher(teacher.id)} className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-300'}`}>
+                          <div className={`w-5 h-5 rounded flex items-center justify-center mr-3 transition-colors ${isSelected ? 'bg-blue-600' : 'bg-slate-200'}`}>
+                            {isSelected && <Icons.CheckCircle className="w-3.5 h-3.5 text-white" />}
+                          </div>
+                          <div>
+                            <div className={`text-sm font-bold ${isSelected ? 'text-blue-800' : 'text-slate-700'}`}>{teacher.name}</div>
+                            <div className="text-xs text-slate-400">{teacher.department}</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+               <button onClick={onClose} className="px-6 py-2.5 rounded-lg text-sm font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 transition-colors">取消</button>
+               <button onClick={() => onSave({ excellentCount, qualifiedCount, reviewCountPerTeacher, reviewCount: totalReviewCount, startTime, endTime, teachers: selectedTeachers })} disabled={!canSave} className="px-8 py-2.5 rounded-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed shadow-sm transition-colors">保存并发布评审任务</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const CourseProgressView = ({ course, onBack, onViewTeacherDetails }) => {
+      const p = course.reviewProgress;
+      const ts = course.teacherStatus;
+      
+      return (
+        <div className="absolute inset-0 flex flex-col bg-[#f0f2f5] animate-fade-in z-20">
+          {/* 顶部导航 */}
+          <div className="bg-white border-b border-slate-200 px-8 py-4 flex items-center gap-4 shrink-0 shadow-sm">
+            <button onClick={onBack} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+              <Icons.ArrowLeft />
+            </button>
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <h2 className="text-lg font-extrabold text-slate-800">{course.name}</h2>
+                <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded text-xs font-bold font-mono">评审追踪报告</span>
+              </div>
+              <div className="text-xs text-slate-500">评审周期：{course.reviewConfig.startTime} 至 {course.reviewConfig.endTime}（{course.reviewConfig.excellentCount !== undefined ? `每位教师：优秀 ${course.reviewConfig.excellentCount} 人、合格 ${course.reviewConfig.qualifiedCount} 人；共 ${course.reviewConfig.reviewCount} 份` : `每人 ${course.reviewConfig.reviewCountPerTeacher || '—'} 份，共 ${course.reviewConfig.reviewCount} 份`}）</div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-8 flex justify-center">
+            <div className="max-w-5xl w-full space-y-6">
+              
+              {/* 核心数据看板 */}
+              <div className="grid grid-cols-3 gap-6">
+                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="text-sm font-bold text-slate-500 mb-2 flex items-center"><Icons.ClipboardList className="mr-2 text-blue-500"/> 生成任务总数</div>
+                    <div className="text-3xl font-extrabold text-slate-800">{p.total} <span className="text-base font-normal text-slate-400">份</span></div>
+                 </div>
+                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="text-sm font-bold text-slate-500 mb-2 flex items-center"><Icons.CheckCircle className="mr-2 text-emerald-500"/> 已完成评审</div>
+                    <div className="text-3xl font-extrabold text-emerald-600">{p.completed} <span className="text-base font-normal text-slate-400">份</span></div>
+                 </div>
+                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="text-sm font-bold text-slate-500 mb-2 flex items-center"><Icons.Clock className="mr-2 text-amber-500"/> 待完成评审</div>
+                    <div className="text-3xl font-extrabold text-amber-600">{p.pending} <span className="text-base font-normal text-slate-400">份</span></div>
+                 </div>
+              </div>
+              
+              {/* 整体进度条 */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                 <h3 className="text-sm font-bold text-slate-800 mb-4">整体评审进度完成率</h3>
+                 <ProgressBar current={p.completed} total={p.total} colorClass="bg-gradient-to-r from-blue-500 to-indigo-500" />
+              </div>
+
+              {/* 教师队列状态 */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* 待完成教师名单 */}
+                <div className="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[400px]">
+                  <div className="px-5 py-4 border-b border-slate-100 bg-amber-50/50 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-800 text-sm flex items-center"><span className="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>评审未完成名单</h3>
+                    <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">{ts.pending.length} 人</span>
+                  </div>
+                  <div className="p-4 flex-1 overflow-y-auto">
+                    {ts.pending.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                        <Icons.CheckCircle className="w-10 h-10 mb-2 text-emerald-400 opacity-50" />
+                        <span className="text-sm font-medium">所有教师均已完成</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {ts.pending.map((t, i) => (
+                          <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-sm mr-3">
+                                {t.name[0]}
+                              </div>
+                              <span className="font-bold text-slate-700 text-sm">{t.name}</span>
+                            </div>
+                            <span className="text-xs text-amber-600 font-medium">进行中...</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 已完成教师列表 */}
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[400px]">
+                  <div className="px-5 py-4 border-b border-slate-100 bg-emerald-50/50 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-800 text-sm flex items-center"><span className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>评审已完成明细</h3>
+                    <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">{ts.completed.length} 人</span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-0">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50 text-slate-500 border-b border-slate-100 sticky top-0">
+                        <tr>
+                          <th className="px-5 py-3 font-medium">教师姓名</th>
+                          <th className="px-5 py-3 font-medium">完成时间</th>
+                          <th className="px-5 py-3 font-medium text-center">完成任务数</th>
+                          <th className="px-5 py-3 font-medium text-right">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {ts.completed.map((t, i) => (
+                          <tr key={i} className="hover:bg-slate-50/50">
+                            <td className="px-5 py-4">
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm mr-3">
+                                  {t.name[0]}
+                                </div>
+                                <span className="font-bold text-slate-700">{t.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 text-slate-500 font-mono text-xs">{t.finishTime}</td>
+                            <td className="px-5 py-4 text-center font-extrabold text-slate-700">{t.taskCount}</td>
+                            <td className="px-5 py-4 text-right">
+                              <button onClick={() => onViewTeacherDetails(t)} className="text-blue-600 hover:text-blue-800 font-bold text-xs bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded transition-colors">
+                                查看打分详情
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {ts.completed.length === 0 && (
+                          <tr><td colSpan="4" className="text-center py-12 text-slate-400">暂无已完成的教师记录</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const TeacherGradingDetailsModal = ({ teacher, courseName, onClose }) => {
+      const [selectedRecord, setSelectedRecord] = useState(null);
+
+      // 使用 useState 保持 mock 数据稳定，并为每条记录加入分层评语内容（综合评语 + 单项作业评语）
+      const [mockResults] = useState(() => Array.from({ length: 8 }).map((_, i) => {
+        const score = Math.floor(Math.random() * 40) + 60;
+        const grade = score >= 90 ? '优秀' : (score >= 75 ? '达标' : '不达标');
+        
+        return {
+          studentId: `STU-2026-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+          score: score,
+          grade: grade,
+          time: `2026-08-${17 + Math.floor(Math.random() * 3)} 1${Math.floor(Math.random() * 9)}:${Math.floor(Math.random() * 50) + 10}:00`,
+          overallComments: {
+            comprehensive: "该同学在本次课程中整体表现符合预期，能够较好地理解核心概念并产出相对完整的方案。但在细节把控和创新性上还有提升空间。",
+            pros: "大局观较好，能够按照课程要求完成全套流程的搭建，没有明显的逻辑漏洞。",
+            cons: "在执行层面的部分设计略显单薄，缺乏足够的数据支撑和深度思考。",
+            improve: "建议在未来的实践中，多参考行业标杆案例，进一步丰富方案的细节并引入量化指标。"
+          },
+          tasks: [
+            {
+              taskName: "作业一：竞品分析报告",
+              score: Math.floor(score * 0.4),
+              comments: {
+                pros: "选取的竞品具有代表性，对比维度清晰。",
+                cons: "结论部分的推导稍显牵强，仅停留在表面现象。",
+                improve: "尝试从商业逻辑或用户心理底层去深挖不同设计的成因。"
+              }
+            },
+            {
+              taskName: "作业二：交互原型演示与文档",
+              score: Math.floor(score * 0.6),
+              comments: {
+                pros: "原型演示流程走通顺滑，基本涵盖了核心用户路径。",
+                cons: "文档排版稍显杂乱，个别极端边界情况（如网络异常）未做说明。",
+                improve: "规范文档排版格式，补充异常流程的提示语设计。"
+              }
+            }
+          ]
+        };
+      }));
+
+      const getGradeColor = (grade) => {
+        if(grade === '优秀') return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+        if(grade === '达标') return 'text-blue-700 bg-blue-50 border-blue-200';
+        return 'text-red-700 bg-red-50 border-red-200';
+      };
+
+      return (
+        <>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
+              <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-[#f8fafc] shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-extrabold shadow-md">
+                    {teacher.name[0]}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-800 text-base">{teacher.name} 老师的评审记录</h3>
+                    <div className="text-xs text-slate-500 mt-0.5">来源任务：{courseName} | 累计批阅：{teacher.taskCount} 份</div>
+                  </div>
+                </div>
+                <button onClick={onClose} className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-300 transition-colors"><Icons.X /></button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
+                 <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                   <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-100 text-slate-500 border-b border-slate-200">
+                        <tr>
+                          <th className="px-6 py-4 font-bold">匿名学生编号</th>
+                          <th className="px-6 py-4 font-bold">批阅等级</th>
+                          <th className="px-6 py-4 font-bold">综合得分</th>
+                          <th className="px-6 py-4 font-bold">提交批阅时间</th>
+                          <th className="px-6 py-4 font-bold text-center">评语</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {mockResults.map((res, i) => (
+                          <tr key={i} className="hover:bg-slate-50/50">
+                            <td className="px-6 py-4 font-mono text-slate-700 font-bold">{res.studentId}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2.5 py-1 rounded text-xs font-bold border ${getGradeColor(res.grade)}`}>
+                                {res.grade}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="font-extrabold text-slate-800">{res.score}</span> 分
+                            </td>
+                            <td className="px-6 py-4 text-slate-500 font-mono text-xs">{res.time}</td>
+                            <td className="px-6 py-4 text-center">
+                              <button onClick={() => setSelectedRecord(res)} className="text-blue-500 hover:text-blue-700 font-medium text-sm underline underline-offset-2">查看内容</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                   </table>
+                 </div>
+                 <div className="mt-4 text-center text-xs text-slate-400">仅展示最新 8 条记录作为原型演示...</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 评语详情内嵌弹窗 (支持综合评价与多作业评价) */}
+          {selectedRecord && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-fade-in p-4">
+              <div className="bg-white w-full max-w-3xl h-full max-h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up border border-slate-200">
+                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                  <h3 className="font-extrabold text-slate-800 text-base flex items-center">
+                    <Icons.ClipboardList className="mr-2 text-blue-600" /> 完整评审报告
+                  </h3>
+                  <button onClick={() => setSelectedRecord(null)} className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"><Icons.X /></button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-6 bg-slate-100/50 space-y-6">
+                  {/* 头部学生得分总览 */}
+                  <div className="flex items-center justify-between bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <div>
+                      <div className="text-xs text-slate-500 mb-1">被评审匿名对象</div>
+                      <div className="font-bold text-slate-800 font-mono text-lg">{selectedRecord.studentId}</div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-xs text-slate-500 mb-1">课程综合总分</div>
+                        <div className="text-2xl font-extrabold text-slate-800">{selectedRecord.score} <span className="text-sm font-normal text-slate-500">分</span></div>
+                      </div>
+                      <span className={`px-3 py-1.5 rounded-lg text-sm font-bold border shadow-sm ${getGradeColor(selectedRecord.grade)}`}>{selectedRecord.grade}</span>
+                    </div>
+                  </div>
+
+                  {/* 模块一：课程综合评价 */}
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/80">
+                      <h4 className="font-bold text-slate-800 text-[15px] flex items-center border-l-4 border-indigo-500 pl-3">课程综合评价总评</h4>
+                    </div>
+                    <div className="p-5 space-y-4">
+                      <div className="text-[14px] text-slate-700 bg-slate-50 p-4 rounded-lg border border-slate-100 leading-relaxed shadow-inner">
+                        <strong className="text-slate-800 mr-2">👨‍🏫 综合导师寄语：</strong>
+                        {selectedRecord.overallComments.comprehensive}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-emerald-50/50 p-4 rounded-lg border border-emerald-100">
+                          <div className="text-sm font-bold text-emerald-700 mb-2 flex items-center"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2"></span>总体优点</div>
+                          <div className="text-[13px] text-slate-700 leading-relaxed">{selectedRecord.overallComments.pros}</div>
+                        </div>
+                        <div className="bg-amber-50/50 p-4 rounded-lg border border-amber-100">
+                          <div className="text-sm font-bold text-amber-700 mb-2 flex items-center"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-2"></span>总体缺点</div>
+                          <div className="text-[13px] text-slate-700 leading-relaxed">{selectedRecord.overallComments.cons}</div>
+                        </div>
+                        <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                          <div className="text-sm font-bold text-blue-700 mb-2 flex items-center"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2"></span>核心改进建议</div>
+                          <div className="text-[13px] text-slate-700 leading-relaxed">{selectedRecord.overallComments.improve}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 模块二：单项作业评价明细 */}
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-[15px] mb-3 ml-1 flex items-center">
+                      <Icons.ClipboardList className="mr-2 text-slate-400 w-5 h-5" /> 包含的单项作业评价明细
+                    </h4>
+                    <div className="space-y-4">
+                      {selectedRecord.tasks.map((task, idx) => (
+                        <div key={idx} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                             <div className="font-bold text-slate-700 text-[14px] flex items-center">
+                               <span className="bg-blue-100 text-blue-700 w-5 h-5 rounded flex items-center justify-center text-xs mr-2">{idx + 1}</span>
+                               {task.taskName}
+                             </div>
+                             <div className="text-[13px] font-bold text-slate-500">
+                               该项得分：<span className="text-blue-600 font-extrabold text-base">{task.score}</span> 分
+                             </div>
+                          </div>
+                          <div className="p-5">
+                            <div className="space-y-3">
+                              <div>
+                                <span className="inline-block text-[12px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 mb-1.5">优点</span>
+                                <p className="text-[13px] text-slate-600 bg-slate-50 p-2.5 rounded border border-slate-100">{task.comments.pros}</p>
+                              </div>
+                              <div>
+                                <span className="inline-block text-[12px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 mb-1.5">不足</span>
+                                <p className="text-[13px] text-slate-600 bg-slate-50 p-2.5 rounded border border-slate-100">{task.comments.cons}</p>
+                              </div>
+                              <div>
+                                <span className="inline-block text-[12px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 mb-1.5">修改建议</span>
+                                <p className="text-[13px] text-slate-600 bg-slate-50 p-2.5 rounded border border-slate-100">{task.comments.improve}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 border-t border-slate-100 bg-white flex justify-end shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                  <button onClick={() => setSelectedRecord(null)} className="px-8 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm">关闭阅读</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      );
+    };
+
+    const INITIAL_FEEDBACK_COURSES = [
+      {
+        id: 'C01', name: 'AI 产品经理核心工作流拆解', completed: 1100, endTime: '2026-08-30 23:59', feedbackCount: null,
+        responses: []
+      },
+      {
+        id: 'C02', name: '点燃计划 | 第16期前端架构实战', completed: 750, endTime: '2026-08-15 23:59', feedbackCount: 120,
+        responses: [
+          { id: 'S202608001', name: '陈雨欣', submitTime: '2026-08-19 16:22:08', answers: ['比较符合', '非常有帮助', '比较准确', '很清楚，可以直接修改', ['评语更具体', '修改建议更可执行'], '希望针对作品中的具体页面给出更多修改示例。'] },
+          { id: 'S202608017', name: '周子涵', submitTime: '2026-08-19 15:06:31', answers: ['一般', '比较有帮助', '一般', '比较清楚', ['分数更准确', '更能识别我提交的文件内容'], '上传的视频内容似乎没有被完整识别，评分与实际完成度有偏差。'] },
+          { id: 'S202608026', name: '林嘉诚', submitTime: '2026-08-18 20:41:55', answers: ['非常符合', '非常有帮助', '很准确', '很清楚，可以直接修改', ['反馈速度更快'], ''] }
+        ]
+      },
+      {
+        id: 'C03', name: 'AIGC 商业插画实战训练营', completed: 2000, endTime: '2026-07-30 23:59', feedbackCount: 300,
+        responses: [
+          { id: 'S202607108', name: '许梦瑶', submitTime: '2026-08-09 11:32:14', answers: ['不太符合', '一般', '不太准确', '一般', ['分数更准确', '评语更具体'], '人物手部细节被识别成了主体结构问题，希望评分时区分问题严重程度。'] }
+        ]
+      }
+    ];
+
+    const FEEDBACK_QUESTIONS = [
+      'AI 给出的等级和分数是否符合你的作业完成情况？',
+      'AI 评语是否能帮助你理解本次作业的主要表现？',
+      'AI 指出的优点和不足是否准确？',
+      'AI 给出的修改建议是否清楚、可执行？',
+      '本次评审中，你最希望 AI 改进哪一部分？',
+      '如果你认为本次评审存在明显问题，请简单说明。'
+    ];
+
+    const FeedbackSettingModal = ({ course, onClose, onSave }) => {
+      const [count, setCount] = useState(course.feedbackCount || Math.min(100, course.completed));
+      const updateCount = value => {
+        const next = Number(value);
+        if (!Number.isNaN(next)) setCount(Math.min(course.completed, Math.max(1, Math.round(next))));
+      };
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="font-extrabold text-slate-800 text-lg flex items-center"><Icons.Settings className="mr-2 text-blue-600" /> 设置学生反馈规则</h3>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icons.X /></button>
+            </div>
+            <div className="p-6">
+              <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-4 mb-6">
+                <div className="text-xs font-bold text-blue-600 mb-1">当前配置课程</div>
+                <div className="font-bold text-slate-800">{course.name}</div>
+                <div className="text-sm text-slate-500 mt-2">学习完成人数：<strong>{course.completed}</strong> 人</div>
+              </div>
+              <label className="block font-bold text-slate-800 mb-3">出现学生反馈问卷的人数 <span className="text-red-500">*</span></label>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center w-60 border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
+                  <button onClick={() => updateCount(count - 1)} className="w-11 h-11 text-xl text-slate-500 border-r border-slate-200 hover:bg-slate-50">−</button>
+                  <input type="number" min="1" max={course.completed} value={count} onChange={e => updateCount(e.target.value)} className="w-full h-11 text-center text-lg font-bold text-blue-600 outline-none" />
+                  <button onClick={() => updateCount(count + 1)} className="w-11 h-11 text-xl text-slate-500 border-l border-slate-200 hover:bg-slate-50">＋</button>
+                </div>
+                <span className="font-medium text-slate-600">人</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-3">系统将在已完成学习的学生中随机选择 {count} 人展示反馈问卷。</p>
+            </div>
+            <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button onClick={onClose} className="px-6 py-2.5 rounded-lg text-sm font-bold text-slate-600 bg-white border border-slate-300">取消</button>
+              <button onClick={() => onSave(count)} className="px-7 py-2.5 rounded-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700">保存设置</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const StudentFeedbackDetailModal = ({ response, courseName, onClose }) => (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 backdrop-blur-sm animate-fade-in">
+        <div className="bg-white w-full max-w-2xl max-h-[82vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
+          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+            <div>
+              <h3 className="font-extrabold text-slate-800 text-lg">学生反馈详情</h3>
+              <p className="text-xs text-slate-500 mt-1">{courseName}</p>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icons.X /></button>
+          </div>
+          <div className="p-6 overflow-y-auto">
+            <div className="flex items-center justify-between bg-blue-50/60 border border-blue-100 rounded-xl p-4 mb-5">
+              <div><div className="font-bold text-slate-800">{response.name}</div><div className="text-xs text-slate-500 mt-1">学号：{response.id}</div></div>
+              <div className="text-xs text-slate-500">提交时间：{response.submitTime}</div>
+            </div>
+            <div className="space-y-4">
+              {FEEDBACK_QUESTIONS.map((question, index) => {
+                const answer = response.answers[index];
+                return (
+                  <div key={question} className="border border-slate-200 rounded-xl p-4">
+                    <div className="text-sm font-bold text-slate-700 mb-2">{index + 1}. {question}</div>
+                    <div className="text-sm text-blue-700 bg-blue-50 rounded-lg px-3 py-2 leading-relaxed">{Array.isArray(answer) ? answer.join('、') : answer || '未填写'}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
+    const FeedbackResponsesModal = ({ course, onClose, onView }) => (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+        <div className="bg-white w-full max-w-4xl max-h-[80vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
+          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div><h3 className="font-extrabold text-slate-800 text-lg">学生反馈记录</h3><p className="text-xs text-slate-500 mt-1">{course.name}</p></div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icons.X /></button>
+          </div>
+          <div className="p-6 overflow-y-auto">
+            {course.responses.length ? (
+              <table className="w-full text-left text-sm border border-slate-200 rounded-xl overflow-hidden">
+                <thead className="bg-slate-50 text-slate-500"><tr><th className="px-5 py-3">学生</th><th className="px-5 py-3">学号</th><th className="px-5 py-3">提交时间</th><th className="px-5 py-3 text-right">操作</th></tr></thead>
+                <tbody className="divide-y divide-slate-100">{course.responses.map(item => <tr key={item.id} className="hover:bg-slate-50"><td className="px-5 py-4 font-bold">{item.name}</td><td className="px-5 py-4 text-slate-500 font-mono">{item.id}</td><td className="px-5 py-4 text-slate-500">{item.submitTime}</td><td className="px-5 py-4 text-right"><button onClick={() => onView(item)} className="text-blue-600 font-bold hover:text-blue-700">查看反馈</button></td></tr>)}</tbody>
+              </table>
+            ) : <div className="py-16 text-center text-slate-400">暂未收到学生反馈</div>}
+          </div>
+        </div>
+      </div>
+    );
+
+    const FeedbackResponsesPage = ({ course, onBack }) => {
+      const [studentKeyword, setStudentKeyword] = useState('');
+      const [appliedKeyword, setAppliedKeyword] = useState('');
+      const filteredResponses = course.responses.filter(response => response.name.includes(appliedKeyword.trim()));
+      return (
+      <div className="absolute inset-0 flex flex-col bg-[#f0f2f5] animate-fade-in">
+        <div className="bg-white border-b border-slate-200 px-8 py-4 flex items-center gap-4 shrink-0 shadow-sm">
+          <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="返回课程列表">
+            <Icons.ArrowLeft />
+          </button>
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-800">学生反馈记录</h2>
+            <div className="text-xs text-slate-500 mt-1">{course.name}</div>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="w-full max-w-[1600px] mx-auto">
+            <div className="grid grid-cols-3 gap-5 mb-6">
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm min-h-[104px] flex flex-col items-center justify-center text-center"><div className="text-sm text-slate-500 mb-2">问卷出现人数</div><div className="text-2xl font-extrabold text-blue-600">{course.feedbackCount} <span className="text-sm font-normal text-slate-400">人</span></div></div>
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm min-h-[104px] flex flex-col items-center justify-center text-center"><div className="text-sm text-slate-500 mb-2">已提交反馈</div><div className="text-2xl font-extrabold text-emerald-600">{course.responses.length} <span className="text-sm font-normal text-slate-400">人</span></div></div>
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm min-h-[104px] flex flex-col items-center justify-center text-center"><div className="text-sm text-slate-500 mb-2">反馈提交率</div><div className="text-2xl font-extrabold text-indigo-600">{course.feedbackCount ? Math.round(course.responses.length / course.feedbackCount * 100) : 0}%</div></div>
+            </div>
+            {course.responses.length ? (
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                  <div className="font-bold text-slate-800">全部学生反馈 <span className="ml-1 text-sm font-normal text-slate-400">共 {filteredResponses.length} 条</span></div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-64">
+                      <input type="text" value={studentKeyword} onChange={e => setStudentKeyword(e.target.value)} onKeyDown={e => e.key === 'Enter' && setAppliedKeyword(studentKeyword)} placeholder="输入学生姓名检索" className="w-full pl-4 pr-9 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
+                      {studentKeyword && <button onClick={() => { setStudentKeyword(''); setAppliedKeyword(''); }} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">×</button>}
+                    </div>
+                    <button onClick={() => setAppliedKeyword(studentKeyword)} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-sm">搜索</button>
+                  </div>
+                </div>
+                <div>
+                  <table className="w-full table-fixed text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
+                      <tr>
+                        <th className="px-3 py-4 w-[4%] text-center">序号</th>
+                        <th className="px-3 py-4 w-[7%]">学生姓名</th>
+                        <th className="px-3 py-4 w-[8%]">提交日期</th>
+                        {FEEDBACK_QUESTIONS.map((question, index) => <th key={question} className={`px-3 py-4 align-top ${index === 5 ? 'w-[16%]' : 'w-[13%]'}`}><div className="text-[11px] text-blue-600 mb-1">问题 {index + 1}</div><div className="leading-relaxed break-words">{question}</div></th>)}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredResponses.map((response, studentIndex) => (
+                        <tr key={response.id} className="hover:bg-blue-50/30 align-top">
+                          <td className="px-3 py-5 font-bold text-slate-400 text-center">{studentIndex + 1}</td>
+                          <td className="px-3 py-5"><div className="font-extrabold text-slate-800 break-words">{response.name}</div></td>
+                          <td className="px-3 py-5 text-slate-500 break-words">{response.submitTime.split(' ')[0]}</td>
+                          {response.answers.map((answer, index) => <td key={index} className="px-3 py-5"><div className={`rounded-lg px-2.5 py-2 leading-relaxed break-words whitespace-normal ${index === 5 ? 'bg-slate-50 text-slate-700' : 'bg-blue-50 text-blue-700 font-medium'}`}>{Array.isArray(answer) ? answer.join('、') : answer || '未填写'}</div></td>)}
+                        </tr>
+                      ))}
+                      {filteredResponses.length === 0 && <tr><td colSpan="9" className="py-16 text-center text-slate-400">未找到匹配的学生反馈</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white border border-slate-200 rounded-2xl py-20 text-center text-slate-400">暂未收到学生反馈</div>
+            )}
+          </div>
+        </div>
+      </div>
+      );
+    };
+
+    const StudentFeedbackManagement = () => {
+      const [courses, setCourses] = useState(INITIAL_FEEDBACK_COURSES);
+      const [settingCourse, setSettingCourse] = useState(null);
+      const [responsesCourse, setResponsesCourse] = useState(null);
+      const saveCount = count => {
+        setCourses(prev => prev.map(item => item.id === settingCourse.id ? {...item, feedbackCount: count} : item));
+        setSettingCourse(null);
+      };
+      if (responsesCourse) {
+        return <FeedbackResponsesPage course={responsesCourse} onBack={() => setResponsesCourse(null)} />;
+      }
+      return (
+        <div className="absolute inset-0 overflow-y-auto p-8 animate-fade-in">
+          <div className="mb-6"><h2 className="text-xl font-extrabold text-slate-800">课程学生反馈管理</h2><p className="text-sm text-slate-500 mt-1">配置随机展示反馈问卷的学生人数，并查看每位学生的反馈意见。</p></div>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200"><tr><th className="px-6 py-4">课程名称</th><th className="px-6 py-4">学习完成人数</th><th className="px-6 py-4">问卷出现人数</th><th className="px-6 py-4">已提交反馈</th><th className="px-6 py-4 text-right">操作</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {courses.map(course => <tr key={course.id} className="hover:bg-slate-50/60"><td className="px-6 py-5"><div className="font-bold text-slate-800">{course.name}</div><div className="text-xs text-slate-400 font-mono mt-1">ID: {course.id}</div></td><td className="px-6 py-5">{course.completed} 人</td><td className="px-6 py-5">{course.feedbackCount ? <span className="font-bold text-blue-600">{course.feedbackCount} 人</span> : <span className="text-slate-400">未设置</span>}</td><td className="px-6 py-5"><span className="font-bold text-emerald-600">{course.responses.length}</span> <span className="text-slate-400">/ {course.feedbackCount || 0}</span></td><td className="px-6 py-5 text-right space-x-2"><button onClick={() => setSettingCourse(course)} className="px-4 py-2 border border-slate-300 rounded-lg font-bold text-slate-600 hover:bg-slate-50">{course.feedbackCount ? '修改设置' : '设置反馈'}</button><button disabled={!course.feedbackCount} onClick={() => setResponsesCourse(course)} className="px-4 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300">查看反馈</button></td></tr>)}
+              </tbody>
+            </table>
+          </div>
+          {settingCourse && <FeedbackSettingModal course={settingCourse} onClose={() => setSettingCourse(null)} onSave={saveCount} />}
+        </div>
+      );
+    };
+
+    function App() {
+      const [currentMenu, setCurrentMenu] = useState('teacher_review');
+      const [courses, setCourses] = useState(INITIAL_COURSES);
+      
+      // State management for navigation flow
+      const [activeCourseId, setActiveCourseId] = useState(null); // Which course we are looking at
+      const [isSettingModalOpen, setIsSettingModalOpen] = useState(false);
+      const [isProgressViewOpen, setIsProgressViewOpen] = useState(false);
+      
+      const [selectedTeacher, setSelectedTeacher] = useState(null); // For drilling down into teacher details
+
+      // Helpers
+      const activeCourse = courses.find(c => c.id === activeCourseId);
+
+      // Handlers
+      const handleOpenSetting = (course) => {
+        setActiveCourseId(course.id);
+        setIsSettingModalOpen(true);
+      };
+
+      const handleSaveSetting = (config) => {
+        // Mock save action: change status to in_progress
+        setCourses(prev => prev.map(c => {
+          if (c.id === activeCourseId) {
+            return {
+              ...c, 
+              status: 'in_progress',
+              reviewConfig: config,
+              reviewProgress: { total: config.reviewCount, completed: 0, pending: config.reviewCount },
+              teacherStatus: { pending: MOCK_TEACHERS.filter(t => config.teachers.includes(t.id)).map(({id, name}) => ({id, name})), completed: [] }
+            };
+          }
+          return c;
+        }));
+        setIsSettingModalOpen(false);
+      };
+
+      const handleOpenProgress = (course) => {
+        setActiveCourseId(course.id);
+        setIsProgressViewOpen(true);
+      };
+
+      const handleCloseProgress = () => {
+        setIsProgressViewOpen(false);
+        setActiveCourseId(null);
+      };
+
+      return (
+        <AdminLayout currentMenu={currentMenu} setCurrentMenu={setCurrentMenu}>
+          
+          {/* Main List View */}
+          {currentMenu === 'teacher_review' && !isProgressViewOpen && (
+            <CourseListView 
+              courses={courses} 
+              onSetReview={handleOpenSetting}
+              onViewProgress={handleOpenProgress}
+            />
+          )}
+
+          {/* Detailed Progress View (Full Screen overlay within Main Area) */}
+          {currentMenu === 'teacher_review' && isProgressViewOpen && activeCourse && (
+            <CourseProgressView 
+              course={activeCourse} 
+              onBack={handleCloseProgress}
+              onViewTeacherDetails={(t) => setSelectedTeacher(t)}
+            />
+          )}
+
+          {/* Setting Modal */}
+          {isSettingModalOpen && activeCourse && (
+            <SetReviewModal 
+              course={activeCourse} 
+              onClose={() => setIsSettingModalOpen(false)}
+              onSave={handleSaveSetting}
+            />
+          )}
+
+          {/* Teacher Details Modal */}
+          {selectedTeacher && activeCourse && (
+            <TeacherGradingDetailsModal
+              teacher={selectedTeacher}
+              courseName={activeCourse.name}
+              onClose={() => setSelectedTeacher(null)}
+            />
+          )}
+
+          {/* Dashboard Mock View */}
+          {currentMenu === 'dashboard' && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-400">
+               <div className="text-center">
+                 <Icons.Home className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                 <p>欢迎来到管理后台，请在左侧选择具体业务模块进行操作。</p>
+               </div>
+            </div>
+          )}
+
+          {currentMenu === 'student_feedback' && <StudentFeedbackManagement />}
+
+        </AdminLayout>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
